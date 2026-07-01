@@ -1,0 +1,89 @@
+import unittest
+
+from confetti import xhtml_to_ir, xhtml_to_markdown
+from confetti.blocks import Table
+
+
+class TestTables(unittest.TestCase):
+    def test_simple_th_headers(self):
+        xhtml = """
+        <table>
+          <tr><th>Name</th><th>Value</th></tr>
+          <tr><td>Alice</td><td>1</td></tr>
+          <tr><td>Bob</td><td>2</td></tr>
+        </table>
+        """
+        result = xhtml_to_markdown(xhtml)
+        self.assertIn("| Name | Value |", result)
+        self.assertIn("| --- | --- |", result)
+        self.assertIn("| Alice | 1 |", result)
+        self.assertIn("| Bob | 2 |", result)
+
+    def test_table_with_tbody(self):
+        xhtml = """
+        <table>
+          <tbody>
+            <tr><th>A</th><th>B</th></tr>
+            <tr><td>1</td><td>2</td></tr>
+          </tbody>
+        </table>
+        """
+        result = xhtml_to_markdown(xhtml)
+        self.assertIn("| A | B |", result)
+        self.assertIn("| 1 | 2 |", result)
+
+    def test_table_with_colgroup(self):
+        xhtml = """
+        <table>
+          <colgroup><col /><col /></colgroup>
+          <tbody>
+            <tr><th>X</th><th>Y</th></tr>
+            <tr><td>a</td><td>b</td></tr>
+          </tbody>
+        </table>
+        """
+        result = xhtml_to_markdown(xhtml)
+        self.assertIn("<!-- ac:macro", result)
+        self.assertIn("X", result)
+        self.assertIn("a", result)
+
+    def test_pipe_escaped_in_cell(self):
+        xhtml = """
+        <table>
+          <tr><th>Key</th><th>Value</th></tr>
+          <tr><td>a|b</td><td>c</td></tr>
+        </table>
+        """
+        self.assertIn("a\\|b", xhtml_to_markdown(xhtml))
+
+    def test_uneven_rows_padded(self):
+        xhtml = """
+        <table>
+          <tr><th>A</th><th>B</th><th>C</th></tr>
+          <tr><td>1</td><td>2</td></tr>
+        </table>
+        """
+        result = xhtml_to_markdown(xhtml)
+        lines = [ln for ln in result.splitlines() if ln.strip()]
+        self.assertGreaterEqual(lines[2].count("|"), 4)
+
+    def test_table_ir_structure(self):
+        doc = xhtml_to_ir("<table><tr><th>A</th></tr><tr><td>1</td></tr></table>")
+        self.assertEqual(len(doc.blocks), 1)
+        b = doc.blocks[0]
+        self.assertIsInstance(b, Table)
+        self.assertEqual(b.headers, ["A"])
+        self.assertEqual(b.rows, [["1"]])
+
+    def test_cell_with_div_wrapper(self):
+        xhtml = """
+        <table>
+          <tr><th>Col</th></tr>
+          <tr><td><div class="content-wrapper"><p>cell text</p></div></td></tr>
+        </table>
+        """
+        self.assertIn("cell text", xhtml_to_markdown(xhtml))
+
+
+if __name__ == "__main__":
+    unittest.main()

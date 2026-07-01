@@ -1,4 +1,4 @@
-from .ir import Document
+from .document import Document
 
 
 def ir_to_markdown(doc: Document) -> str:

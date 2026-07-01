@@ -1,4 +1,5 @@
-from .ir import Block, Document, Heading, Paragraph, Table
+from .blocks import Block, Heading, Paragraph, Table
+from .document import Document
 from .convert import xhtml_to_ir, markdown_to_ir, ir_to_markdown, ir_to_xhtml
 
 
