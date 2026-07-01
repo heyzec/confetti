@@ -3,7 +3,6 @@ from __future__ import annotations
 import html.entities
 import re
 import xml.etree.ElementTree as ET
-from html import escape
 
 # ===========================================================================
 # Namespace / XML constants
@@ -22,6 +21,11 @@ _XML_PREDEFINED = {"lt", "gt", "amp", "apos", "quot"}
 _HEADING_TAGS = {"h1", "h2", "h3", "h4", "h5", "h6"}
 _CELL_TAGS = {"td", "th"}
 _LIST_TAGS = {"ul", "ol"}
+
+def _xml_escape(s: str) -> str:
+    """Escape for XML text/attribute content — encodes &, <, >, " but NOT ' (valid in text nodes)."""
+    return s.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;").replace('"', "&quot;")
+
 
 _UNICODE_TO_ENTITY = {
     "\u00a0": "&nbsp;",
@@ -99,8 +103,8 @@ def _is_macro(tag: str) -> bool:
 
 
 def _normalize(text: str) -> str:
-    """Collapse whitespace, but preserve non-breaking spaces (\u00a0)."""
-    return re.sub(r"[ \t\n\r\f\v]+", " ", text).strip()
+    """Collapse ASCII whitespace, but preserve non-breaking spaces (\u00a0)."""
+    return re.sub(r"[ \t\n\r\f\v]+", " ", text).strip(" \t\n\r\f\v")
 
 
 def _et_tag_to_qname(tag: str) -> str:
@@ -146,6 +150,15 @@ def _restore_cdata(xml: str) -> str:
         xml,
         flags=re.DOTALL,
     )
+
+
+def _serialize_inner_xml(element: ET.Element) -> str:
+    """Serialize the inner content of element (text + children), without its outer tags."""
+    xml = _serialize_element(element)
+    gt = xml.index(">")
+    if xml[gt - 1] == "/":  # self-closing
+        return ""
+    return xml[gt + 1 : xml.rindex("</")]
 
 
 def _serialize_element(element: ET.Element) -> str:
@@ -207,15 +220,15 @@ def _render_inline_md(text: str) -> str:
                 best_m, best_name, best_start = m, name, m.start()
 
         if best_m is None:
-            result.append(escape(text[pos:], quote=False))
+            result.append(_xml_escape(text[pos:]))
             break
 
         if best_start > pos:
-            result.append(escape(text[pos:best_start], quote=False))
+            result.append(_xml_escape(text[pos:best_start]))
 
-        inner = escape(best_m.group(1), quote=False)
+        inner = _xml_escape(best_m.group(1))
         if best_name == "link":
-            result.append(f'<a href="{escape(best_m.group(2))}">{inner}</a>')
+            result.append(f'<a href="{_xml_escape(best_m.group(2))}">{inner}</a>')
         elif best_name == "strong_em":
             result.append(f"<em><strong>{inner}</strong></em>")
         elif best_name == "strong":
@@ -372,8 +385,58 @@ def _inline_is_simple(element: ET.Element) -> bool:
     return True
 
 
+_BLOCK_CONTENT_TAGS = frozenset({
+    "p", "div", "ul", "ol", "table",
+    "h1", "h2", "h3", "h4", "h5", "h6", "pre", "blockquote",
+})
+
+
+
+def _cell_structure(
+    cell_el: ET.Element,
+) -> "tuple[str, str, ET.Element] | None":
+    """Return (prefix, suffix, content_el) for a cell, or None if not representable.
+
+    Traverses single-child wrapper elements (p, div) to find the element
+    whose _collect_inline gives the cell's text content.  prefix/suffix are
+    the serialized opening/closing tags of those wrappers.
+    Returns None when the cell has multiple block-level children, or a
+    non-transparent block child (ul, ol, nested table, …).
+    """
+    block_children = [
+        c for c in cell_el
+        if _local(c.tag) in _BLOCK_CONTENT_TAGS and not _is_macro(c.tag)
+    ]
+    if not block_children:
+        return ("", "", cell_el)
+    if len(block_children) > 1:
+        return None
+    child = block_children[0]
+    child_local = _local(child.tag)
+    if child_local not in ("p", "div"):
+        return None
+    inner = _cell_structure(child)
+    if inner is None:
+        return None
+    inner_prefix, inner_suffix, content_el = inner
+    return (
+        _serialize_open_tag(child) + inner_prefix,
+        inner_suffix + f"</{child_local}>",
+        content_el,
+    )
+
+
 def _xhtml_parse_table(element: ET.Element) -> "Table | None":
-    """Parse a table (including colspan/rowspan) into the Table IR using span markers."""
+    """Parse a table element into a Table IR node (with or without meta).
+
+    Cells with colspan/rowspan are expanded into a 2D grid: same-row
+    continuation slots are filled with "<", lower-row continuation slots
+    with "^".  Actual cell content that is exactly "<" or "^" is escaped
+    to "\\<" / "\\^" to avoid ambiguity.
+    Returns None only for unrepresentable structure (multiple block children,
+    non-simple inline content, etc.).
+    """
+    import json
     from .blocks import Table
 
     def iter_rows(el: ET.Element) -> list[ET.Element]:
@@ -397,51 +460,147 @@ def _xhtml_parse_table(element: ET.Element) -> "Table | None":
     if not get_cells(trs[0]):
         return None
 
+    # --- Structural metadata ---
+    table_attrs = {_et_tag_to_qname(k): v for k, v in element.attrib.items()}
+    has_tbody = any(_local(c.tag) == "tbody" for c in element)
+    colgroup_xml = next(
+        (_serialize_element(c) for c in element if _local(c.tag) == "colgroup"), ""
+    )
+    needs_meta = bool(table_attrs or colgroup_xml)
+
+    # --- Build 2D grid ---
     grid: dict[tuple[int, int], str] = {}
+    cell_metas_grid: dict[tuple[int, int], dict] = {}
+    tr_attrs_list: list[dict] = []
     occupied: set[tuple[int, int]] = set()
 
-    for r, tr in enumerate(trs):
-        c = 0
-        for cell in get_cells(tr):
-            while (r, c) in occupied:
-                c += 1
-            colspan = int(cell.get("colspan", 1))
-            rowspan = int(cell.get("rowspan", 1))
-            content = _normalize(_collect_inline(cell))
-            grid[(r, c)] = content
+    for row_idx, tr in enumerate(trs):
+        cells = get_cells(tr)
+        tr_attrs = {_et_tag_to_qname(k): v for k, v in tr.attrib.items()}
+        if tr_attrs:
+            needs_meta = True
+        tr_attrs_list.append(tr_attrs)
+
+        col_cursor = 0
+        for cell in cells:
+            while (row_idx, col_cursor) in occupied:
+                col_cursor += 1
+
+            colspan = rowspan = 1
+            try:
+                colspan = int(cell.get("colspan", "1"))
+                rowspan = int(cell.get("rowspan", "1"))
+            except (ValueError, TypeError):
+                pass
+
+            cell_local = _local(cell.tag)
+            cell_attrs = {_et_tag_to_qname(k): v for k, v in cell.attrib.items()}
+
+            struct = _cell_structure(cell)
+            is_raw = False
+            if struct is None:
+                is_raw = True
+            else:
+                prefix, suffix, content_el = struct
+                if not _inline_is_simple(content_el):
+                    is_raw = True
+                else:
+                    raw_inline = _collect_inline(content_el)
+                    if re.search(re.escape(_RAW_OPEN) + r"[^\x03]*\n", raw_inline):
+                        is_raw = True
+                    else:
+                        content = _normalize(raw_inline)
+                        if not content and list(content_el):
+                            is_raw = True
+                        elif any(
+                            _local(c.tag) in ("time", "br")
+                            for c in content_el.iter()
+                            if not _is_macro(c.tag) and c is not content_el
+                        ):
+                            is_raw = True
+
+            if is_raw:
+                content = _serialize_inner_xml(cell)
+                if "\n" in content:
+                    return None
+                cm: dict = {"tag": cell_local, "raw": True}
+                if cell_attrs:
+                    cm["attrs"] = cell_attrs
+                needs_meta = True
+            else:
+                # Escape single-char span markers so they aren't confused with grid markers
+                if content == "<":
+                    content = "\\<"
+                elif content == "^":
+                    content = "\\^"
+
+                cm = {"tag": cell_local}
+                if cell_attrs or prefix or suffix:
+                    needs_meta = True
+                if cell_attrs:
+                    cm["attrs"] = cell_attrs
+                if prefix:
+                    cm["prefix"] = prefix
+                if suffix:
+                    cm["suffix"] = suffix
+
+            grid[(row_idx, col_cursor)] = content
+            cell_metas_grid[(row_idx, col_cursor)] = cm
+
             for dc in range(1, colspan):
-                grid[(r, c + dc)] = _COLSPAN_MARKER
+                grid[(row_idx, col_cursor + dc)] = "<"
+
             for dr in range(1, rowspan):
                 for dc in range(colspan):
-                    occupied.add((r + dr, c + dc))
-                    grid[(r + dr, c + dc)] = _ROWSPAN_MARKER
-            c += colspan
+                    pos = (row_idx + dr, col_cursor + dc)
+                    grid[pos] = "^"
+                    occupied.add(pos)
+
+            col_cursor += colspan
 
     if not grid:
         return None
 
-    num_rows = max(r for r, _ in grid) + 1
-    num_cols = max(c for _, c in grid) + 1
-    headers = [grid.get((0, c), "") for c in range(num_cols)]
-    rows = [[grid.get((r, c), "") for c in range(num_cols)] for r in range(1, num_rows)]
-    return Table(headers=headers, rows=rows)
+    num_rows = len(trs)
+    num_cols = max(c for (r, c) in grid) + 1
 
+    all_content = [
+        [grid.get((r, c), "") for c in range(num_cols)]
+        for r in range(num_rows)
+    ]
 
-_COLSPAN_MARKER = "\x00<"  # sentinel stored in Table IR for a colspan continuation cell
-_ROWSPAN_MARKER = "\x00^"  # sentinel stored in Table IR for a rowspan continuation cell
+    has_spans = any(v in ("<", "^") for v in grid.values())
+    if has_spans:
+        needs_meta = True
 
+    headers = all_content[0]
+    rows = all_content[1:]
 
-def _is_complex_table(element: ET.Element) -> bool:
-    """Return True if the table has Confluence-specific attributes that
-    cannot be round-tripped through the simple Table IR (class, style,
-    colgroup, etc.).  Tables with colspan/rowspan are handled via span markers.
-    """
-    if element.get("class") or element.get("style"):
-        return True
-    for child in element:
-        if _local(child.tag) == "colgroup":
-            return True
-    return False
+    if not needs_meta:
+        return Table(headers=headers, rows=rows)
+
+    rows_meta: list[dict] = []
+    for row_idx in range(num_rows):
+        cells_meta = [
+            cell_metas_grid[(row_idx, c)]
+            for c in range(num_cols)
+            if (row_idx, c) in cell_metas_grid
+        ]
+        row_entry: dict = {"cells": cells_meta}
+        if tr_attrs_list[row_idx]:
+            row_entry["tr_attrs"] = tr_attrs_list[row_idx]
+        rows_meta.append(row_entry)
+
+    meta_dict: dict = {}
+    if table_attrs:
+        meta_dict["table_attrs"] = table_attrs
+    if colgroup_xml:
+        meta_dict["colgroup"] = colgroup_xml
+    if has_tbody:
+        meta_dict["tbody"] = True
+    meta_dict["rows_meta"] = rows_meta
+
+    return Table(headers=headers, rows=rows, meta=json.dumps(meta_dict, separators=(",", ":")))
 
 
 def _blocks_from_elements(elements: list[ET.Element]) -> list:
@@ -516,20 +675,8 @@ def _md_is_sep_row(line: str) -> bool:
 
 
 def _md_parse_row(line: str) -> list[str]:
-    result = []
-    for cell in line.strip().strip("|").split("|"):
-        s = cell.strip()
-        if s == "<":
-            result.append(_COLSPAN_MARKER)
-        elif s == "^":
-            result.append(_ROWSPAN_MARKER)
-        elif s.startswith("\\<"):
-            result.append(_encode_inline_xml("<" + s[2:]))
-        elif s.startswith("\\^"):
-            result.append(_encode_inline_xml("^" + s[2:]))
-        else:
-            result.append(_encode_inline_xml(s))
-    return result
+    _WS = " \t\n\r\f\v"
+    return [_encode_inline_xml(c.strip(_WS)) for c in line.strip().strip("|").split("|")]
 
 
 def _md_parse_table(lines: list[str]) -> "Table | None":

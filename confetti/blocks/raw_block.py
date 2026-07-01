@@ -17,7 +17,7 @@ class RawBlock(Block):
     def from_xhtml(cls, element: ET.Element) -> RawBlock | None:
         from ..helpers import (
             _HEADING_TAGS, _LIST_TAGS, _collect_inline, _inline_is_simple,
-            _is_complex_table, _is_macro, _local, _normalize, _serialize_element,
+            _is_macro, _local, _normalize, _serialize_element,
         )
         local = _local(element.tag)
 
@@ -27,7 +27,8 @@ class RawBlock(Block):
         if local in _LIST_TAGS:
             return cls(xml=_serialize_element(element))
 
-        if local == "table" and _is_complex_table(element):
+        # Any table Table.from_xhtml couldn't handle (truly complex or unrepresentable cells)
+        if local == "table":
             return cls(xml=_serialize_element(element))
 
         if local in _HEADING_TAGS and (element.attrib or not _inline_is_simple(element)):

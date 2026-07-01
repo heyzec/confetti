@@ -119,9 +119,9 @@ class TestTables(unittest.TestCase):
         </table>
         """
         result = xhtml_to_markdown(xhtml)
-        self.assertIn("<!-- ac:macro", result)
-        self.assertIn("X", result)
-        self.assertIn("a", result)
+        self.assertIn("<!-- ac:table ", result)
+        self.assertIn("| X | Y |", result)
+        self.assertIn("| a | b |", result)
 
     def test_pipe_escaped_in_cell(self):
         xhtml = """
@@ -159,6 +159,50 @@ class TestTables(unittest.TestCase):
         </table>
         """
         self.assertIn("cell text", xhtml_to_markdown(xhtml))
+
+    def test_colspan_produces_span_marker(self):
+        xhtml = """
+        <table>
+          <tr><th colspan="2">AB</th><th>C</th></tr>
+          <tr><td>D</td><td>E</td><td>F</td></tr>
+        </table>
+        """
+        result = xhtml_to_markdown(xhtml)
+        self.assertIn("| AB | < | C |", result)
+        self.assertIn("| D | E | F |", result)
+
+    def test_rowspan_produces_span_marker(self):
+        xhtml = """
+        <table>
+          <tr><th>A</th><th>B</th></tr>
+          <tr><td rowspan="2">X</td><td>Y</td></tr>
+          <tr><td>Z</td></tr>
+        </table>
+        """
+        result = xhtml_to_markdown(xhtml)
+        self.assertIn("| X | Y |", result)
+        self.assertIn("| ^ | Z |", result)
+
+    def test_colspan_roundtrip(self):
+        from confetti.document import Document
+        xhtml = "<table><tr><th colspan=\"2\">AB</th><th>C</th></tr><tr><td>D</td><td>E</td><td>F</td></tr></table>"
+        md = xhtml_to_markdown(xhtml)
+        self.assertEqual(Document.from_markdown(md).to_xhtml(), Document.from_xhtml(xhtml).to_xhtml())
+
+    def test_rowspan_roundtrip(self):
+        from confetti.document import Document
+        xhtml = "<table><tr><th>A</th><th>B</th></tr><tr><td rowspan=\"2\">X</td><td>Y</td></tr><tr><td>Z</td></tr></table>"
+        md = xhtml_to_markdown(xhtml)
+        self.assertEqual(Document.from_markdown(md).to_xhtml(), Document.from_xhtml(xhtml).to_xhtml())
+
+    def test_span_marker_escaped_in_content(self):
+        from confetti.document import Document
+        xhtml = "<table><tr><th>Key</th></tr><tr><td>&lt;</td></tr></table>"
+        md = xhtml_to_markdown(xhtml)
+        self.assertNotIn("| < |", md)
+        self.assertIn("\\<", md)
+        # Round-trip: parsed-from-markdown matches parsed-from-xhtml
+        self.assertEqual(Document.from_markdown(md).to_xhtml(), Document.from_xhtml(xhtml).to_xhtml())
 
 
 if __name__ == "__main__":
