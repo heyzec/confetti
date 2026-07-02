@@ -5,7 +5,7 @@ from dataclasses import dataclass
 from typing import override
 
 from .block import Block
-from ..helpers import _render_for_markdown, _render_for_xhtml
+from ..helpers import _COLSPAN_MARKER, _ROWSPAN_MARKER, _render_for_markdown, _render_for_xhtml
 
 
 @dataclass
@@ -46,8 +46,12 @@ class Table(Block):
             return row + [""] * (ncols - len(row))
 
         def esc(text: str) -> str:
+            if text == _COLSPAN_MARKER:
+                return "<"
+            if text == _ROWSPAN_MARKER:
+                return "^"
             clean = _render_for_markdown(text)
-            return clean.replace("|", "\\|").replace("\n", " ").replace("\r", "")
+            return clean.replace("|", "\\|").replace("<", "\\<").replace("\n", " ").replace("\r", "")
 
         header_line = "| " + " | ".join(esc(h) for h in pad(self.headers)) + " |"
         sep_line = "| " + " | ".join("---" for _ in range(ncols)) + " |"
@@ -58,16 +62,39 @@ class Table(Block):
 
     @override
     def to_xhtml(self) -> str:
-        lines = ["<table>"]
+        all_rows: list[list[str]] = []
         if self.headers:
+            all_rows.append(self.headers)
+        all_rows.extend(self.rows)
+        n_rows = len(all_rows)
+
+        lines = ["<table>"]
+        for r, row in enumerate(all_rows):
+            tag = "th" if r == 0 and bool(self.headers) else "td"
             lines.append("  <tr>")
-            for h in self.headers:
-                lines.append(f"    <th>{_render_for_xhtml(h)}</th>")
-            lines.append("  </tr>")
-        for row in self.rows:
-            lines.append("  <tr>")
-            for cell in row:
-                lines.append(f"    <td>{_render_for_xhtml(cell)}</td>")
+            c = 0
+            while c < len(row):
+                cell = row[c]
+                if cell in (_COLSPAN_MARKER, _ROWSPAN_MARKER):
+                    c += 1
+                    continue
+                colspan = 1
+                while c + colspan < len(row) and row[c + colspan] == _COLSPAN_MARKER:
+                    colspan += 1
+                rowspan = 1
+                while (
+                    r + rowspan < n_rows
+                    and c < len(all_rows[r + rowspan])
+                    and all_rows[r + rowspan][c] == _ROWSPAN_MARKER
+                ):
+                    rowspan += 1
+                attrs = ""
+                if colspan > 1:
+                    attrs += f' colspan="{colspan}"'
+                if rowspan > 1:
+                    attrs += f' rowspan="{rowspan}"'
+                lines.append(f"    <{tag}{attrs}>{_render_for_xhtml(cell)}</{tag}>")
+                c += 1
             lines.append("  </tr>")
         lines.append("</table>")
         return "\n".join(lines)

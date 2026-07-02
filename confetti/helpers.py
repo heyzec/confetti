@@ -177,6 +177,7 @@ _SENTINEL_RE = re.compile(
 
 _INLINE_MD_PATTERNS = [
     (re.compile(r"\[([^\]]*)\]\(([^)]*)\)"), "link"),
+    (re.compile(r"\*\*\*(.+?)\*\*\*", re.DOTALL), "strong_em"),
     (re.compile(r"\*\*(.+?)\*\*", re.DOTALL), "strong"),
     (re.compile(r"~~(.+?)~~", re.DOTALL), "s"),
     (re.compile(r"`([^`\n]+)`"), "code"),
@@ -206,15 +207,17 @@ def _render_inline_md(text: str) -> str:
                 best_m, best_name, best_start = m, name, m.start()
 
         if best_m is None:
-            result.append(escape(text[pos:]))
+            result.append(escape(text[pos:], quote=False))
             break
 
         if best_start > pos:
-            result.append(escape(text[pos:best_start]))
+            result.append(escape(text[pos:best_start], quote=False))
 
-        inner = escape(best_m.group(1))
+        inner = escape(best_m.group(1), quote=False)
         if best_name == "link":
             result.append(f'<a href="{escape(best_m.group(2))}">{inner}</a>')
+        elif best_name == "strong_em":
+            result.append(f"<em><strong>{inner}</strong></em>")
         elif best_name == "strong":
             result.append(f"<strong>{inner}</strong>")
         elif best_name == "s":
@@ -370,7 +373,7 @@ def _inline_is_simple(element: ET.Element) -> bool:
 
 
 def _xhtml_parse_table(element: ET.Element) -> "Table | None":
-    """Parse a simple (no Confluence attributes) table into the Table IR."""
+    """Parse a table (including colspan/rowspan) into the Table IR using span markers."""
     from .blocks import Table
 
     def iter_rows(el: ET.Element) -> list[ET.Element]:
@@ -391,33 +394,53 @@ def _xhtml_parse_table(element: ET.Element) -> "Table | None":
     trs = iter_rows(element)
     if not trs:
         return None
-    first_cells = get_cells(trs[0])
-    if not first_cells:
+    if not get_cells(trs[0]):
         return None
 
-    headers = [_normalize(_collect_inline(c)) for c in first_cells]
-    rows: list[list[str]] = [
-        [_normalize(_collect_inline(c)) for c in get_cells(tr)]
-        for tr in trs[1:]
-        if get_cells(tr)
-    ]
+    grid: dict[tuple[int, int], str] = {}
+    occupied: set[tuple[int, int]] = set()
+
+    for r, tr in enumerate(trs):
+        c = 0
+        for cell in get_cells(tr):
+            while (r, c) in occupied:
+                c += 1
+            colspan = int(cell.get("colspan", 1))
+            rowspan = int(cell.get("rowspan", 1))
+            content = _normalize(_collect_inline(cell))
+            grid[(r, c)] = content
+            for dc in range(1, colspan):
+                grid[(r, c + dc)] = _COLSPAN_MARKER
+            for dr in range(1, rowspan):
+                for dc in range(colspan):
+                    occupied.add((r + dr, c + dc))
+                    grid[(r + dr, c + dc)] = _ROWSPAN_MARKER
+            c += colspan
+
+    if not grid:
+        return None
+
+    num_rows = max(r for r, _ in grid) + 1
+    num_cols = max(c for _, c in grid) + 1
+    headers = [grid.get((0, c), "") for c in range(num_cols)]
+    rows = [[grid.get((r, c), "") for c in range(num_cols)] for r in range(1, num_rows)]
     return Table(headers=headers, rows=rows)
+
+
+_COLSPAN_MARKER = "\x00<"  # sentinel stored in Table IR for a colspan continuation cell
+_ROWSPAN_MARKER = "\x00^"  # sentinel stored in Table IR for a rowspan continuation cell
 
 
 def _is_complex_table(element: ET.Element) -> bool:
     """Return True if the table has Confluence-specific attributes that
     cannot be round-tripped through the simple Table IR (class, style,
-    colgroup, colspan, rowspan, etc.).
+    colgroup, etc.).  Tables with colspan/rowspan are handled via span markers.
     """
     if element.get("class") or element.get("style"):
         return True
     for child in element:
         if _local(child.tag) == "colgroup":
             return True
-    for desc in element.iter():
-        if _local(desc.tag) in _CELL_TAGS:
-            if desc.get("colspan") or desc.get("rowspan"):
-                return True
     return False
 
 
@@ -493,7 +516,20 @@ def _md_is_sep_row(line: str) -> bool:
 
 
 def _md_parse_row(line: str) -> list[str]:
-    return [_encode_inline_xml(c.strip()) for c in line.strip().strip("|").split("|")]
+    result = []
+    for cell in line.strip().strip("|").split("|"):
+        s = cell.strip()
+        if s == "<":
+            result.append(_COLSPAN_MARKER)
+        elif s == "^":
+            result.append(_ROWSPAN_MARKER)
+        elif s.startswith("\\<"):
+            result.append(_encode_inline_xml("<" + s[2:]))
+        elif s.startswith("\\^"):
+            result.append(_encode_inline_xml("^" + s[2:]))
+        else:
+            result.append(_encode_inline_xml(s))
+    return result
 
 
 def _md_parse_table(lines: list[str]) -> "Table | None":

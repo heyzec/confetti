@@ -1,0 +1,14 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+SAMPLE="${1:-$SCRIPT_DIR/samples/example.xml}"
+DIR=/tmp/confetti
+mkdir -p "$DIR"
+BASE="$(basename "${SAMPLE%.*}")"
+MD="$DIR/$BASE.md"
+RT="$DIR/$BASE.rt.xml"
+
+python3 -m confetti to-md "$SAMPLE" -o "$MD"
+python3 -m confetti to-xhtml "$MD" -o "$RT"
+diff "$SAMPLE" "$RT" && echo "OK: $SAMPLE roundtrips cleanly"
