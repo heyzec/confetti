@@ -13,7 +13,7 @@ class CodeBlock(Block):
     """A Confluence code macro rendered as a fenced code block.
 
     Markdown representation:
-        <!-- ac:code {"macro-id": "...", "schema-version": "1", "params": [["language", "sql"], ...]} -->
+        <!-- confetti:code {"macro-id": "...", "schema-version": "1", "params": [["language", "sql"], ...]} -->
         ```language
         code content
         ```
@@ -57,9 +57,9 @@ class CodeBlock(Block):
     @classmethod
     def from_markdown(cls, lines: list[str], i: int) -> tuple[CodeBlock, int] | None:
         line = lines[i].strip()
-        if not (line.startswith("<!-- ac:code ") and line.endswith(" -->")):
+        if not (line.startswith("<!-- confetti:code ") and line.endswith(" -->")):
             return None
-        meta_str = line[len("<!-- ac:code "):-len(" -->")]
+        meta_str = line[len("<!-- confetti:code "):-len(" -->")]
         try:
             meta = json.loads(meta_str)
         except json.JSONDecodeError:
@@ -92,7 +92,7 @@ class CodeBlock(Block):
         meta_str = json.dumps(meta, separators=(", ", ": "))
         lang = self._language()
         fence_open = f"```{lang}" if lang else "```"
-        return f"<!-- ac:code {meta_str} -->\n{fence_open}\n{self.body}\n```"
+        return f"<!-- confetti:code {meta_str} -->\n{fence_open}\n{self.body}\n```"
 
     @override
     def to_xhtml(self) -> str:

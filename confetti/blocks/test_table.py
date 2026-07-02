@@ -119,7 +119,7 @@ class TestTables(unittest.TestCase):
         </table>
         """
         result = xhtml_to_markdown(xhtml)
-        self.assertIn("<!-- ac:table ", result)
+        self.assertIn("<!-- confetti:table ", result)
         self.assertIn("| X | Y |", result)
         self.assertIn("| a | b |", result)
 

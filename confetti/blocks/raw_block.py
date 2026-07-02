@@ -44,7 +44,7 @@ class RawBlock(Block):
 
     @classmethod
     def from_markdown(cls, lines: list[str], i: int) -> tuple[RawBlock, int] | None:
-        if lines[i].strip() != "<!-- ac:macro":
+        if lines[i].strip() != "<!-- confetti:raw":
             return None
         xml_lines: list[str] = []
         i += 1
@@ -56,7 +56,7 @@ class RawBlock(Block):
 
     @override
     def to_markdown(self) -> str:
-        return f"<!-- ac:macro\n{self.xml}\n-->"
+        return f"<!-- confetti:raw\n{self.xml}\n-->"
 
     @override
     def to_xhtml(self) -> str:

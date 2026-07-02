@@ -13,13 +13,13 @@ class LayoutMacro(Block):
     preserved verbatim while its inner blocks remain editable in Markdown.
 
     Markdown representation:
-        <!-- ac:layout-open
+        <!-- confetti:layout-open
         {open_xml}
         -->
 
         {inner blocks}
 
-        <!-- ac:layout-close
+        <!-- confetti:layout-close
         {close_xml}
         -->
     """
@@ -55,7 +55,7 @@ class LayoutMacro(Block):
     @classmethod
     def from_markdown(cls, lines: list[str], i: int) -> tuple[LayoutMacro, int] | None:
         from ..helpers import _md_blocks_from_lines
-        if lines[i].strip() != "<!-- ac:layout-open":
+        if lines[i].strip() != "<!-- confetti:layout-open":
             return None
         open_lines: list[str] = []
         i += 1
@@ -66,10 +66,10 @@ class LayoutMacro(Block):
         open_xml = "\n".join(open_lines)
 
         inner_lines: list[str] = []
-        while i < len(lines) and lines[i].strip() != "<!-- ac:layout-close":
+        while i < len(lines) and lines[i].strip() != "<!-- confetti:layout-close":
             inner_lines.append(lines[i])
             i += 1
-        i += 1  # skip '<!-- ac:layout-close'
+        i += 1  # skip '<!-- confetti:layout-close'
 
         close_lines: list[str] = []
         while i < len(lines) and lines[i].rstrip() != "-->":
@@ -85,9 +85,9 @@ class LayoutMacro(Block):
     def to_markdown(self) -> str:
         inner = "\n\n".join(b.to_markdown() for b in self.blocks)
         return (
-            f"<!-- ac:layout-open\n{self.open_xml}\n-->"
+            f"<!-- confetti:layout-open\n{self.open_xml}\n-->"
             f"\n\n{inner}\n\n"
-            f"<!-- ac:layout-close\n{self.close_xml}\n-->"
+            f"<!-- confetti:layout-close\n{self.close_xml}\n-->"
         )
 
     @override

@@ -34,7 +34,7 @@ class Paragraph(Block):
             cur_s = lines[i].strip()
             if not cur_s or _ATX_HEADING.match(lines[i]) or "|" in cur_s:
                 break
-            if cur_s in ("<!-- ac:macro", "<!-- ac:layout-open", "<!-- ac:layout-close"):
+            if cur_s in ("<!-- confetti:raw", "<!-- confetti:layout-open", "<!-- confetti:layout-close"):
                 break
             para_lines.append(cur_s)
             i += 1

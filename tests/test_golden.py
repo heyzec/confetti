@@ -24,7 +24,7 @@ class TestMacroDropping(unittest.TestCase):
         result = xhtml_to_markdown(xhtml)
         self.assertIn("Before", result)
         self.assertIn("After", result)
-        self.assertIn("<!-- ac:code ", result)
+        self.assertIn("<!-- confetti:code ", result)
         self.assertIn("```python", result)
         self.assertIn('print("hello")', result)
 
@@ -39,7 +39,7 @@ class TestMacroDropping(unittest.TestCase):
         """
         result = xhtml_to_markdown(xhtml)
         self.assertIn("Visible", result)
-        self.assertIn("<!-- ac:macro", result)
+        self.assertIn("<!-- confetti:raw", result)
         self.assertIn("ac:structured-macro", result)
 
     def test_ri_user_preserved_inline(self):
@@ -60,5 +60,5 @@ class TestMacroDropping(unittest.TestCase):
         """
         result = xhtml_to_markdown(xhtml)
         self.assertIn("After jira", result)
-        self.assertIn("<!-- ac:macro", result)
+        self.assertIn("<!-- confetti:raw", result)
         self.assertIn("ac:structured-macro", result)

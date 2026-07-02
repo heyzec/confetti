@@ -35,8 +35,8 @@ class Table(Block):
         line = lines[i].strip()
 
         meta: str | None = None
-        if line.startswith("<!-- ac:table ") and line.endswith(" -->"):
-            meta = line[len("<!-- ac:table "):-len(" -->")]
+        if line.startswith("<!-- confetti:table ") and line.endswith(" -->"):
+            meta = line[len("<!-- confetti:table "):-len(" -->")]
             try:
                 json.loads(meta)
             except json.JSONDecodeError:
@@ -82,7 +82,7 @@ class Table(Block):
         pipe = self._pipe_table()
         if self.meta is None:
             return pipe
-        return f"<!-- ac:table {self.meta} -->\n{pipe}"
+        return f"<!-- confetti:table {self.meta} -->\n{pipe}"
 
     @override
     def to_xhtml(self) -> str:

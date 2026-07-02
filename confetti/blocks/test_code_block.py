@@ -20,7 +20,7 @@ class TestCodeBlock(unittest.TestCase):
     def test_to_markdown_with_language(self):
         xhtml = '<ac:structured-macro ac:name="code" ac:schema-version="1" ac:macro-id="abc"><ac:parameter ac:name="language">sql</ac:parameter><ac:plain-text-body><![CDATA[SELECT 1]]></ac:plain-text-body></ac:structured-macro>'
         md = xhtml_to_markdown(xhtml)
-        self.assertIn("<!-- ac:code ", md)
+        self.assertIn("<!-- confetti:code ", md)
         self.assertIn('"macro-id": "abc"', md)
         self.assertIn("```sql", md)
         self.assertIn("SELECT 1", md)
