@@ -7,3 +7,6 @@ __pycache__/
 
 # Generated roundtrip artifact
 tests/samples/example.md
+
+# Secrets
+.env

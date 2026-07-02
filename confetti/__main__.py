@@ -1,6 +1,15 @@
 #!/usr/bin/env python3
 import argparse
+import json
+import os
 import sys
+import urllib.error
+import urllib.request
+
+try:
+    import dotenv
+except ImportError:
+    dotenv = None  # type: ignore[assignment]
 
 from .convert import xhtml_to_ir, markdown_to_ir, ir_to_markdown, ir_to_xhtml
 
@@ -33,6 +42,81 @@ def cmd_to_xhtml(args: argparse.Namespace) -> None:
     md = _read(args.input)
     xhtml = ir_to_xhtml(markdown_to_ir(md))
     _write(args.output, xhtml)
+
+
+def cmd_download(args: argparse.Namespace) -> None:
+    token = os.environ.get("CONFLUENCE_TOKEN")
+    if not token:
+        raise ValueError("CONFLUENCE_TOKEN environment variable not set")
+
+    base_url = os.environ.get("CONFLUENCE_URL", "https://confluence.shopee.io").rstrip("/")
+    page_id = args.page_id
+    auth_headers = {"Authorization": f"Bearer {token}"}
+
+    get_url = f"{base_url}/rest/api/content/{page_id}?expand=body.storage"
+    req = urllib.request.Request(get_url, headers=auth_headers)
+    try:
+        with urllib.request.urlopen(req) as resp:
+            page = json.loads(resp.read().decode())
+    except urllib.error.HTTPError as exc:
+        raise ValueError(f"GET page {page_id} failed: {exc.code} {exc.reason}") from exc
+
+    xhtml = page["body"]["storage"]["value"]
+
+    if args.file.endswith(".md"):
+        content = ir_to_markdown(xhtml_to_ir(xhtml))
+    else:
+        content = xhtml
+
+    _write(args.file, content)
+
+
+def cmd_upload(args: argparse.Namespace) -> None:
+    token = os.environ.get("CONFLUENCE_TOKEN")
+    if not token:
+        raise ValueError("CONFLUENCE_TOKEN environment variable not set")
+
+    base_url = os.environ.get("CONFLUENCE_URL", "https://confluence.shopee.io").rstrip("/")
+    page_id = args.page_id
+    auth_headers = {
+        "Authorization": f"Bearer {token}",
+        "Content-Type": "application/json",
+    }
+
+    get_url = f"{base_url}/rest/api/content/{page_id}"
+    req = urllib.request.Request(get_url, headers=auth_headers)
+    try:
+        with urllib.request.urlopen(req) as resp:
+            page = json.loads(resp.read().decode())
+    except urllib.error.HTTPError as exc:
+        raise ValueError(f"GET page {page_id} failed: {exc.code} {exc.reason}") from exc
+
+    current_version = page["version"]["number"]
+    title = page["title"]
+
+    raw = _read(args.file)
+    if args.file.endswith(".md"):
+        xhtml = ir_to_xhtml(markdown_to_ir(raw))
+    else:
+        xhtml = raw
+
+    put_url = f"{base_url}/rest/api/content/{page_id}?expand=body.storage"
+    body = json.dumps({
+        "version": {"number": current_version + 1},
+        "type": "page",
+        "title": title,
+        "body": {"storage": {"value": xhtml, "representation": "storage"}},
+    }).encode()
+    req = urllib.request.Request(put_url, data=body, headers=auth_headers, method="PUT")
+    try:
+        with urllib.request.urlopen(req) as resp:
+            result = json.loads(resp.read().decode())
+    except urllib.error.HTTPError as exc:
+        detail = exc.read().decode()
+        raise ValueError(f"PUT page {page_id} failed: {exc.code} {exc.reason}\n{detail}") from exc
+
+    new_version = result["version"]["number"]
+    print(f"Updated '{title}' (page {page_id}) → version {new_version}", file=sys.stderr)
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -68,6 +152,18 @@ def build_parser() -> argparse.ArgumentParser:
     )
     p2.set_defaults(func=cmd_to_xhtml)
 
+    # download
+    p3 = sub.add_parser("download", help="Download a Confluence page to a file")
+    p3.add_argument("--page-id", "-p", required=True, metavar="ID", help="Confluence page ID")
+    p3.add_argument("file", metavar="FILE", help="Output file (.md triggers Markdown conversion)")
+    p3.set_defaults(func=cmd_download)
+
+    # upload
+    p4 = sub.add_parser("upload", help="Upload XHTML to a Confluence page")
+    p4.add_argument("--page-id", "-p", required=True, metavar="ID", help="Confluence page ID")
+    p4.add_argument("file", metavar="FILE", help="XHTML file to upload")
+    p4.set_defaults(func=cmd_upload)
+
     return parser
 
 
@@ -82,4 +178,6 @@ def main() -> None:
 
 
 if __name__ == "__main__":
+    if dotenv is not None:
+        dotenv.load_dotenv()
     main()
