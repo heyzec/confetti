@@ -13,7 +13,6 @@ class TestCodeBlock(unittest.TestCase):
         b = doc.blocks[0]
         self.assertIsInstance(b, CodeBlock)
         self.assertEqual(b.macro_id, "abc")
-        self.assertEqual(b.schema_version, "1")
         self.assertEqual(b.params, [("language", "python")])
         self.assertEqual(b.body, 'print("hi")')
 

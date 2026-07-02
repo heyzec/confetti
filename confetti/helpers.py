@@ -621,6 +621,8 @@ def _blocks_from_elements(elements: list[ET.Element]) -> list:
                 blocks.extend(_blocks_from_elements(list(element)))
                 continue
             if local == "structured-macro":
+                sv = element.get(f"{{{_AC_NS}}}schema-version", "1")
+                assert sv == "1", f"unexpected ac:schema-version {sv!r}"
                 name = element.get(f"{{{_AC_NS}}}name", "")
                 if name in _TRANSPARENT_LAYOUT_MACROS:
                     blocks.extend(_blocks_from_elements(list(element)))
