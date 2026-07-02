@@ -608,9 +608,9 @@ def _xhtml_parse_table(element: ET.Element) -> "Table | None":
 
 
 def _blocks_from_elements(elements: list[ET.Element]) -> list:
-    from .blocks import CodeBlock, Heading, LayoutMacro, Paragraph, RawBlock, Table
+    from .blocks import CodeBlock, Heading, LayoutMacro, List, Paragraph, RawBlock, Table
 
-    _XHTML_BLOCK_TYPES = [LayoutMacro, CodeBlock, Heading, Paragraph, Table, RawBlock]
+    _XHTML_BLOCK_TYPES = [LayoutMacro, CodeBlock, Heading, Paragraph, Table, List, RawBlock]
 
     blocks = []
     for element in elements:
@@ -644,9 +644,9 @@ def _blocks_from_elements(elements: list[ET.Element]) -> list:
 
 
 def _md_blocks_from_lines(lines: list[str]) -> list:
-    from .blocks import CodeBlock, Heading, LayoutMacro, Paragraph, RawBlock, Table
+    from .blocks import CodeBlock, Heading, LayoutMacro, List, Paragraph, RawBlock, Table
 
-    _MD_BLOCK_TYPES = [LayoutMacro, CodeBlock, RawBlock, Heading, Table, Paragraph]
+    _MD_BLOCK_TYPES = [LayoutMacro, CodeBlock, RawBlock, List, Heading, Table, Paragraph]
 
     blocks = []
     i = 0
