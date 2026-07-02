@@ -43,6 +43,24 @@ class TestInlineExamples(unittest.TestCase):
             "<p>Italicized text is the <em>cat's meow</em>.</p>",
         )
 
+    def test_bold_underscore(self):
+        self.assertEqual(
+            Document.from_markdown("I just love __bold text__.").to_xhtml(),
+            "<p>I just love <strong>bold text</strong>.</p>",
+        )
+
+    def test_italic_underscore(self):
+        self.assertEqual(
+            Document.from_markdown("Italicized text is the _cat's meow_.").to_xhtml(),
+            "<p>Italicized text is the <em>cat's meow</em>.</p>",
+        )
+
+    def test_bold_italic_underscore(self):
+        self.assertEqual(
+            Document.from_markdown("This is ___really important___.").to_xhtml(),
+            "<p>This is <em><strong>really important</strong></em>.</p>",
+        )
+
     # --- Strikethrough ---
 
     def test_strikethrough(self):

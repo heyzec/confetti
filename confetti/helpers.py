@@ -191,10 +191,13 @@ _SENTINEL_RE = re.compile(
 _INLINE_MD_PATTERNS = [
     (re.compile(r"\[([^\]]*)\]\(([^)]*)\)"), "link"),
     (re.compile(r"\*\*\*(.+?)\*\*\*", re.DOTALL), "strong_em"),
+    (re.compile(r"___(.+?)___", re.DOTALL), "strong_em"),
     (re.compile(r"\*\*(.+?)\*\*", re.DOTALL), "strong"),
+    (re.compile(r"__(.+?)__", re.DOTALL), "strong"),
     (re.compile(r"~~(.+?)~~", re.DOTALL), "s"),
     (re.compile(r"`([^`\n]+)`"), "code"),
     (re.compile(r"\*([^*\n]+)\*"), "em"),
+    (re.compile(r"_([^_\n]+)_"), "em"),
     (re.compile(r"📅\s*(\d{4}-\d{2}-\d{2})"), "date"),
 ]
 
