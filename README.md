@@ -227,3 +227,10 @@ Rendered output looks like this:
 <tr><td colspan="2" rowspan="2">big</td><td>C1</td></tr>
 <tr><td>C2</td></tr>
 </table>
+
+## Dates
+
+Confluence date elements (`<time datetime="..." />`) are represented as a 📅 emoji
+followed by an ISO 8601 date:
+
+Example: 📅 2026-04-28

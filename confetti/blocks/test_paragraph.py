@@ -172,6 +172,28 @@ class TestParagraphs(unittest.TestCase):
         self.assertIn("Hello", result)
         self.assertIn("world", result)
 
+    # --- Dates ---
+
+    def test_time_to_emoji(self):
+        self.assertEqual(
+            xhtml_to_markdown('<p><time datetime="2026-04-28" /></p>'),
+            "📅 2026-04-28",
+        )
+
+    def test_emoji_to_time(self):
+        self.assertEqual(
+            Document.from_markdown("📅 2026-04-28").to_xhtml(),
+            '<p><time datetime="2026-04-28" /></p>',
+        )
+
+    def test_time_roundtrip(self):
+        md = xhtml_to_markdown('<p>Due: <time datetime="2025-12-31" /></p>')
+        self.assertEqual(md, "Due: 📅 2025-12-31")
+        self.assertEqual(
+            Document.from_markdown(md).to_xhtml(),
+            '<p>Due: <time datetime="2025-12-31" /></p>',
+        )
+
 
 if __name__ == "__main__":
     unittest.main()

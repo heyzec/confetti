@@ -195,6 +195,7 @@ _INLINE_MD_PATTERNS = [
     (re.compile(r"~~(.+?)~~", re.DOTALL), "s"),
     (re.compile(r"`([^`\n]+)`"), "code"),
     (re.compile(r"\*([^*\n]+)\*"), "em"),
+    (re.compile(r"📅\s*(\d{4}-\d{2}-\d{2})"), "date"),
 ]
 
 _XHTML_INLINE_TAGS = {
@@ -239,6 +240,8 @@ def _render_inline_md(text: str) -> str:
             result.append(f"<code>{inner}</code>")
         elif best_name == "em":
             result.append(f"<em>{inner}</em>")
+        elif best_name == "date":
+            result.append(f'<time datetime="{best_m.group(1)}" />')
 
         pos = best_m.end()
 
@@ -331,7 +334,8 @@ def _inline_text(element: ET.Element) -> str:
     if local == "br":
         return " "
     if local == "time":
-        return element.get("datetime", "")
+        dt = element.get("datetime", "")
+        return f"📅 {dt}" if dt else ""
     if local == "a":
         href = element.get("href", "")
         inner = _collect_inline(element)
@@ -513,7 +517,7 @@ def _xhtml_parse_table(element: ET.Element) -> "Table | None":
                         if not content and list(content_el):
                             is_raw = True
                         elif any(
-                            _local(c.tag) in ("time", "br")
+                            _local(c.tag) == "br"
                             for c in content_el.iter()
                             if not _is_macro(c.tag) and c is not content_el
                         ):
