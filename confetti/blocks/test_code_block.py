@@ -55,5 +55,19 @@ class TestCodeBlock(unittest.TestCase):
         self.assertEqual(Document.from_markdown(md).to_xhtml(), Document.from_xhtml(xhtml).to_xhtml())
 
 
+    def test_bare_fence_no_header(self):
+        md = "```python\nprint(1)\n```"
+        doc = Document.from_markdown(md)
+        self.assertIsInstance(doc.blocks[0], CodeBlock)
+        self.assertEqual(doc.blocks[0].to_markdown(), md)
+
+    def test_bare_fence_roundtrip_to_xhtml(self):
+        md = "```sql\nSELECT 1\n```"
+        xhtml = Document.from_markdown(md).to_xhtml()
+        self.assertIn('ac:name="code"', xhtml)
+        self.assertIn('ac:name="language"', xhtml)
+        self.assertIn("SELECT 1", xhtml)
+
+
 if __name__ == "__main__":
     unittest.main()

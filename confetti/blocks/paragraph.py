@@ -36,6 +36,8 @@ class Paragraph(Block):
                 break
             if cur_s in ("<!-- confetti:raw", "<!-- confetti:layout-open", "<!-- confetti:layout-close"):
                 break
+            if cur_s.startswith("```") or cur_s.startswith("- ") or cur_s.startswith("* ") or (cur_s[:2].isdigit() and ". " in cur_s[:4]):
+                break
             para_lines.append(cur_s)
             i += 1
         if para_lines:

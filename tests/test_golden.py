@@ -24,7 +24,6 @@ class TestMacroDropping(unittest.TestCase):
         result = xhtml_to_markdown(xhtml)
         self.assertIn("Before", result)
         self.assertIn("After", result)
-        self.assertIn("<!-- confetti:code ", result)
         self.assertIn("```python", result)
         self.assertIn('print("hello")', result)
 

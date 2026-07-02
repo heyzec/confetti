@@ -94,13 +94,18 @@ class CodeBlock(Block):
     @override
     def to_markdown(self) -> str:
         extra_params = [(k, v) for k, v in self.params if k != "language"]
-        meta: dict = {"macro-id": self.macro_id}
+        meta: dict = {}
+        if self.macro_id:
+            meta["macro-id"] = self.macro_id
         if extra_params:
             meta["params"] = extra_params
-        meta_str = json.dumps(meta, separators=(", ", ": "))
         lang = self._language()
         fence_open = f"```{lang}" if lang else "```"
-        return f"<!-- confetti:code {meta_str} -->\n{fence_open}\n{self.body}\n```"
+        fence = f"{fence_open}\n{self.body}\n```"
+        if not meta:
+            return fence  # no metadata → bare fence, no comment header needed
+        meta_str = json.dumps(meta, separators=(", ", ": "))
+        return f"<!-- confetti:code {meta_str} -->\n{fence}"
 
     @override
     def to_xhtml(self) -> str:
