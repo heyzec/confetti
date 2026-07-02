@@ -5,6 +5,7 @@ from dataclasses import dataclass
 from typing import override
 
 from .block import Block
+from .list import _OL_ITEM
 from ..helpers import _render_for_markdown, _render_for_xhtml
 
 
@@ -36,7 +37,7 @@ class Paragraph(Block):
                 break
             if cur_s in ("<!-- confetti:raw", "<!-- confetti:layout-open", "<!-- confetti:layout-close"):
                 break
-            if cur_s.startswith("```") or cur_s.startswith("- ") or cur_s.startswith("* ") or (cur_s[:2].isdigit() and ". " in cur_s[:4]):
+            if cur_s.startswith("```") or cur_s.startswith("- ") or cur_s.startswith("* ") or _OL_ITEM.match(cur_s):
                 break
             para_lines.append(cur_s)
             i += 1
