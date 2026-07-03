@@ -238,3 +238,10 @@ class TestRoundTrip(unittest.TestCase):
         md = ir_to_markdown(ir_original)
         ir_roundtrip = markdown_to_ir(md)
         self.assertEqual(len(ir_original.blocks), len(ir_roundtrip.blocks))
+
+    def test_escaped_asterisk_not_bullet(self):
+        md = r"\* Without the backslash, this would be a bullet in an unordered list."
+        xhtml = ir_to_xhtml(markdown_to_ir(md))
+        self.assertIn("* Without", xhtml)
+        self.assertNotIn("<ul>", xhtml)
+        self.assertNotIn("<li>", xhtml)

@@ -137,6 +137,12 @@ To create an inline link, use the `[text](url)` syntax.
 
 Example: My favorite search engine is [Duck Duck Go](https://duckduckgo.com).
 
+## Escaping Characters
+
+To display a literal character that would otherwise be used to format text in a Markdown document, add a backslash (\) in front of the character.
+
+Example: \* Without the backslash, this would be a bullet in an unordered list.
+
 # Extended Syntax
 
 These elements are a superset of the basic Markdown syntax.

@@ -189,6 +189,7 @@ _SENTINEL_RE = re.compile(
 )
 
 _INLINE_MD_PATTERNS = [
+    (re.compile(r"\\(.)"), "escape"),
     (re.compile(r"\[([^\]]*)\]\(([^)]*)\)"), "link"),
     (re.compile(r"\*\*\*(.+?)\*\*\*", re.DOTALL), "strong_em"),
     (re.compile(r"___(.+?)___", re.DOTALL), "strong_em"),
@@ -243,6 +244,8 @@ def _render_inline_md(text: str) -> str:
             result.append(f"<code>{inner}</code>")
         elif best_name == "em":
             result.append(f"<em>{inner}</em>")
+        elif best_name == "escape":
+            result.append(_xml_escape(best_m.group(1)))
         elif best_name == "date":
             result.append(f'<time datetime="{best_m.group(1)}" />')
 
@@ -351,15 +354,20 @@ def _inline_text(element: ET.Element) -> str:
     return _collect_inline(element)
 
 
+def _escape_md_text(s: str) -> str:
+    """Escape characters in a plain text node that would be misread as Markdown."""
+    return re.sub(r"([_\\])", r"\\\1", s)
+
+
 def _collect_inline(element: ET.Element) -> str:
     """Collect all inline-Markdown text from within an element."""
     parts: list[str] = []
     if element.text:
-        parts.append(element.text)
+        parts.append(_escape_md_text(element.text))
     for child in element:
         parts.append(_inline_text(child))
         if child.tail:
-            parts.append(child.tail)
+            parts.append(_escape_md_text(child.tail))
     return "".join(parts)
 
 
