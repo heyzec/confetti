@@ -4,6 +4,7 @@ import json
 import os
 import sys
 import urllib.error
+import urllib.parse
 import urllib.request
 
 try:
@@ -32,6 +33,40 @@ def _write(path: str, content: str) -> None:
         print(f"Written to {path}", file=sys.stderr)
 
 
+def _resolve_page_id(value: str, auth_headers: dict) -> str:
+    """Accept a numeric page ID or a Confluence page URL; return the numeric ID."""
+    if value.isdigit():
+        return value
+    req = urllib.request.Request(value, headers=auth_headers)
+    try:
+        with urllib.request.urlopen(req) as resp:
+            final_url = resp.url
+    except urllib.error.HTTPError as exc:
+        raise ValueError(f"Could not resolve page URL: {exc.code} {exc.reason}") from exc
+    parsed = urllib.parse.urlparse(final_url)
+    parts = parsed.path.split("/")
+    if len(parts) < 4 or parts[1] != "display":
+        raise ValueError(f"Could not extract page from resolved URL: {final_url}")
+    space_key = parts[2]
+    title = urllib.parse.unquote_plus(parts[3])
+    base_url = f"{parsed.scheme}://{parsed.netloc}"
+    api_url = (
+        f"{base_url}/rest/api/content"
+        f"?spaceKey={urllib.parse.quote(space_key)}"
+        f"&title={urllib.parse.quote(title)}"
+    )
+    api_req = urllib.request.Request(api_url, headers=auth_headers)
+    try:
+        with urllib.request.urlopen(api_req) as resp:
+            data = json.loads(resp.read().decode())
+    except urllib.error.HTTPError as exc:
+        raise ValueError(f"Could not look up page by title: {exc.code} {exc.reason}") from exc
+    results = data.get("results", [])
+    if not results:
+        raise ValueError(f"No page found for space={space_key!r} title={title!r}")
+    return results[0]["id"]
+
+
 def cmd_to_md(args: argparse.Namespace) -> None:
     xhtml = _read(args.input)
     md = ir_to_markdown(xhtml_to_ir(xhtml))
@@ -50,8 +85,8 @@ def cmd_download(args: argparse.Namespace) -> None:
         raise ValueError("CONFLUENCE_TOKEN environment variable not set")
 
     base_url = os.environ.get("CONFLUENCE_URL", "https://confluence.shopee.io").rstrip("/")
-    page_id = args.page_id
     auth_headers = {"Authorization": f"Bearer {token}"}
+    page_id = _resolve_page_id(args.page, auth_headers)
 
     get_url = f"{base_url}/rest/api/content/{page_id}?expand=body.storage"
     req = urllib.request.Request(get_url, headers=auth_headers)
@@ -77,11 +112,11 @@ def cmd_upload(args: argparse.Namespace) -> None:
         raise ValueError("CONFLUENCE_TOKEN environment variable not set")
 
     base_url = os.environ.get("CONFLUENCE_URL", "https://confluence.shopee.io").rstrip("/")
-    page_id = args.page_id
     auth_headers = {
         "Authorization": f"Bearer {token}",
         "Content-Type": "application/json",
     }
+    page_id = _resolve_page_id(args.page, auth_headers)
 
     get_url = f"{base_url}/rest/api/content/{page_id}"
     req = urllib.request.Request(get_url, headers=auth_headers)
@@ -154,13 +189,13 @@ def build_parser() -> argparse.ArgumentParser:
 
     # download
     p3 = sub.add_parser("download", help="Download a Confluence page to a file")
-    p3.add_argument("--page-id", "-p", required=True, metavar="ID", help="Confluence page ID")
+    p3.add_argument("--page", "-p", required=True, metavar="ID_OR_URL", help="Confluence page ID or URL")
     p3.add_argument("file", metavar="FILE", help="Output file (.md triggers Markdown conversion)")
     p3.set_defaults(func=cmd_download)
 
     # upload
     p4 = sub.add_parser("upload", help="Upload XHTML to a Confluence page")
-    p4.add_argument("--page-id", "-p", required=True, metavar="ID", help="Confluence page ID")
+    p4.add_argument("--page", "-p", required=True, metavar="ID_OR_URL", help="Confluence page ID or URL")
     p4.add_argument("file", metavar="FILE", help="XHTML file to upload")
     p4.set_defaults(func=cmd_upload)
 
