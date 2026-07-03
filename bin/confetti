@@ -1,5 +1,7 @@
 #!/bin/sh
-cd "$(dirname "${BASH_SOURCE[0]}")"
+_orig_dir="$(pwd)"
+cd "$(dirname "$0")"
 cd ..
-python -m confetti
-
+export PYTHONPATH="$(pwd)${PYTHONPATH:+:$PYTHONPATH}"
+cd "$_orig_dir"
+python -m confetti "$@"
