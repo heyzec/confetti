@@ -4,8 +4,21 @@ import xml.etree.ElementTree as ET
 from dataclasses import dataclass
 from typing import override
 
+from ..helpers import (
+    _ATX_HEADING,
+    _HEADING_TAGS,
+    _SETEXT_DASH,
+    _SETEXT_EQ,
+    _collect_inline,
+    _encode_inline_xml,
+    _inline_is_simple,
+    _is_macro,
+    _local,
+    _normalize,
+    render_for_markdown,
+    render_for_xhtml,
+)
 from .block import Block
-from ..helpers import _render_for_markdown, _render_for_xhtml
 
 
 @dataclass
@@ -15,10 +28,7 @@ class Heading(Block):
 
     @classmethod
     def from_xhtml(cls, element: ET.Element) -> Heading | None:
-        from ..helpers import (
-            _HEADING_TAGS, _collect_inline, _inline_is_simple,
-            _is_macro, _local, _normalize,
-        )
+
         if _is_macro(element.tag):
             return None
         local = _local(element.tag)
@@ -31,11 +41,13 @@ class Heading(Block):
 
     @classmethod
     def from_markdown(cls, lines: list[str], i: int) -> tuple[Heading, int] | None:
-        from ..helpers import _ATX_HEADING, _SETEXT_DASH, _SETEXT_EQ, _encode_inline_xml
         line = lines[i]
         m = _ATX_HEADING.match(line)
         if m:
-            return cls(level=len(m.group(1)), text=_encode_inline_xml(m.group(2).strip())), i + 1
+            return (
+                cls(level=len(m.group(1)), text=_encode_inline_xml(m.group(2).strip())),
+                i + 1,
+            )
         stripped = line.strip()
         if stripped and i + 1 < len(lines):
             nxt = lines[i + 1].strip()
@@ -47,8 +59,8 @@ class Heading(Block):
 
     @override
     def to_markdown(self) -> str:
-        return f"{'#' * self.level} {_render_for_markdown(self.text)}"
+        return f"{'#' * self.level} {render_for_markdown(self.text)}"
 
     @override
     def to_xhtml(self) -> str:
-        return f"<h{self.level}>{_render_for_xhtml(self.text)}</h{self.level}>"
+        return f"<h{self.level}>{render_for_xhtml(self.text)}</h{self.level}>"

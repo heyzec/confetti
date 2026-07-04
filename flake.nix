@@ -52,6 +52,7 @@
           venv
           basedpyright
           black
+          isort
         ];
       });
     });

@@ -4,6 +4,15 @@ import xml.etree.ElementTree as ET
 from dataclasses import dataclass
 from typing import override
 
+from ..helpers import (
+    _AC_NS,
+    _blocks_from_elements,
+    _et_tag_to_qname,
+    _is_macro,
+    _local,
+    _serialize_open_tag,
+    md_blocks_from_lines,
+)
 from .block import Block
 
 
@@ -30,10 +39,7 @@ class LayoutMacro(Block):
 
     @classmethod
     def from_xhtml(cls, element: ET.Element) -> LayoutMacro | None:
-        from ..helpers import (
-            _AC_NS, _blocks_from_elements, _et_tag_to_qname, _is_macro, _local,
-            _serialize_open_tag,
-        )
+
         if not _is_macro(element.tag):
             return None
         if _local(element.tag) != "structured-macro":
@@ -54,7 +60,7 @@ class LayoutMacro(Block):
 
     @classmethod
     def from_markdown(cls, lines: list[str], i: int) -> tuple[LayoutMacro, int] | None:
-        from ..helpers import _md_blocks_from_lines
+
         if lines[i].strip() != "<!-- confetti:layout-open":
             return None
         open_lines: list[str] = []
@@ -78,7 +84,7 @@ class LayoutMacro(Block):
         i += 1  # skip '-->'
         close_xml = "\n".join(close_lines)
 
-        inner_blocks = _md_blocks_from_lines(inner_lines)
+        inner_blocks = md_blocks_from_lines(inner_lines)
         return cls(open_xml=open_xml, close_xml=close_xml, blocks=inner_blocks), i
 
     @override

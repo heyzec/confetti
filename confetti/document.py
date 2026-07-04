@@ -5,8 +5,11 @@ from dataclasses import dataclass, field
 
 from .blocks import Block
 from .helpers import (
-    _AC_NS, _RI_NS, _blocks_from_elements, _md_blocks_from_lines,
-    _replace_html_entities,
+    _AC_NS,
+    _RI_NS,
+    _blocks_from_elements,
+    md_blocks_from_lines,
+    replace_html_entities,
 )
 
 
@@ -16,7 +19,7 @@ class Document:
 
     @classmethod
     def from_xhtml(cls, xhtml: str) -> Document:
-        xhtml = _replace_html_entities(xhtml)
+        xhtml = replace_html_entities(xhtml)
         ns = f'xmlns:ac="{_AC_NS}" xmlns:ri="{_RI_NS}"'
         try:
             root = ET.fromstring(f"<root {ns}>{xhtml}</root>")
@@ -26,7 +29,7 @@ class Document:
 
     @classmethod
     def from_markdown(cls, markdown: str) -> Document:
-        return cls(blocks=_md_blocks_from_lines(markdown.splitlines()))
+        return cls(blocks=md_blocks_from_lines(markdown.splitlines()))
 
     def to_markdown(self) -> str:
         return "\n\n".join(b.to_markdown() for b in self.blocks)

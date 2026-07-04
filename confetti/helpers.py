@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import html.entities
+import json
 import re
 import xml.etree.ElementTree as ET
 
@@ -22,9 +23,15 @@ _HEADING_TAGS = {"h1", "h2", "h3", "h4", "h5", "h6"}
 _CELL_TAGS = {"td", "th"}
 _LIST_TAGS = {"ul", "ol"}
 
+
 def _xml_escape(s: str) -> str:
     """Escape for XML text/attribute content — encodes &, <, >, " but NOT ' (valid in text nodes)."""
-    return s.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;").replace('"', "&quot;")
+    return (
+        s.replace("&", "&amp;")
+        .replace("<", "&lt;")
+        .replace(">", "&gt;")
+        .replace('"', "&quot;")
+    )
 
 
 _UNICODE_TO_ENTITY = {
@@ -82,7 +89,7 @@ def _re_encode_entities_in_text(xml: str) -> str:
     return "".join(result)
 
 
-def _replace_html_entities(text: str) -> str:
+def replace_html_entities(text: str) -> str:
     def replace(m: re.Match[str]) -> str:
         name = m.group(1)
         if name in _XML_PREDEFINED:
@@ -254,7 +261,7 @@ def _render_inline_md(text: str) -> str:
     return "".join(result)
 
 
-def _render_for_xhtml(text: str) -> str:
+def render_for_xhtml(text: str) -> str:
     """Convert inline Markdown + sentinel-wrapped raw XML to XHTML.
     Also re-encodes non-breaking spaces and arrow characters as HTML entities.
     """
@@ -274,7 +281,7 @@ def _render_for_xhtml(text: str) -> str:
     return _re_encode_entities(rendered)
 
 
-def _render_for_markdown(text: str) -> str:
+def render_for_markdown(text: str) -> str:
     """Strip sentinels from text for Markdown output; raw XML becomes inline HTML."""
     return text.replace(_RAW_OPEN, "").replace(_RAW_CLOSE, "")
 
@@ -302,7 +309,7 @@ def _encode_inline_xml(text: str) -> str:
             break
 
         if text[tag_end - 1] == "/":
-            result.append(f"{_RAW_OPEN}{text[start:tag_end + 1]}{_RAW_CLOSE}")
+            result.append(f"{_RAW_OPEN}{text[start : tag_end + 1]}{_RAW_CLOSE}")
             pos = tag_end + 1
         else:
             nm = _TAG_NAME.match(text, start)
@@ -378,9 +385,20 @@ def _collect_inline(element: ET.Element) -> str:
 # Transparent layout macros: content traversed, wrapper preserved via LayoutMacro.
 _TRANSPARENT_LAYOUT_MACROS = {"easy-heading-free"}
 
-_SUPPORTED_INLINE_LOCALS = frozenset({
-    "br", "time", "a", "strong", "b", "em", "i", "s", "del", "code",
-})
+_SUPPORTED_INLINE_LOCALS = frozenset(
+    {
+        "br",
+        "time",
+        "a",
+        "strong",
+        "b",
+        "em",
+        "i",
+        "s",
+        "del",
+        "code",
+    }
+)
 
 
 def _inline_is_simple(element: ET.Element) -> bool:
@@ -400,16 +418,28 @@ def _inline_is_simple(element: ET.Element) -> bool:
     return True
 
 
-_BLOCK_CONTENT_TAGS = frozenset({
-    "p", "div", "ul", "ol", "table",
-    "h1", "h2", "h3", "h4", "h5", "h6", "pre", "blockquote",
-})
-
+_BLOCK_CONTENT_TAGS = frozenset(
+    {
+        "p",
+        "div",
+        "ul",
+        "ol",
+        "table",
+        "h1",
+        "h2",
+        "h3",
+        "h4",
+        "h5",
+        "h6",
+        "pre",
+        "blockquote",
+    }
+)
 
 
 def _cell_structure(
     cell_el: ET.Element,
-) -> "tuple[str, str, ET.Element] | None":
+) -> tuple[str, str, ET.Element] | None:
     """Return (prefix, suffix, content_el) for a cell, or None if not representable.
 
     Traverses single-child wrapper elements (p, div) to find the element
@@ -419,7 +449,8 @@ def _cell_structure(
     non-transparent block child (ul, ol, nested table, …).
     """
     block_children = [
-        c for c in cell_el
+        c
+        for c in cell_el
         if _local(c.tag) in _BLOCK_CONTENT_TAGS and not _is_macro(c.tag)
     ]
     if not block_children:
@@ -441,7 +472,7 @@ def _cell_structure(
     )
 
 
-def _xhtml_parse_table(element: ET.Element) -> "Table | None":
+def xhtml_parse_table(element: ET.Element) -> "Table | None":
     """Parse a table element into a Table IR node (with or without meta).
 
     Cells with colspan/rowspan are expanded into a 2D grid: same-row
@@ -451,8 +482,6 @@ def _xhtml_parse_table(element: ET.Element) -> "Table | None":
     Returns None only for unrepresentable structure (multiple block children,
     non-simple inline content, etc.).
     """
-    import json
-    from .blocks import Table
 
     def iter_rows(el: ET.Element) -> list[ET.Element]:
         if _is_macro(el.tag):
@@ -513,6 +542,8 @@ def _xhtml_parse_table(element: ET.Element) -> "Table | None":
 
             struct = _cell_structure(cell)
             is_raw = False
+            content = ""
+            prefix = suffix = ""
             if struct is None:
                 is_raw = True
             else:
@@ -577,11 +608,10 @@ def _xhtml_parse_table(element: ET.Element) -> "Table | None":
         return None
 
     num_rows = len(trs)
-    num_cols = max(c for (r, c) in grid) + 1
+    num_cols = max(c for (_, c) in grid) + 1
 
     all_content = [
-        [grid.get((r, c), "") for c in range(num_cols)]
-        for r in range(num_rows)
+        [grid.get((r, c), "") for c in range(num_cols)] for r in range(num_rows)
     ]
 
     has_spans = any(v in ("<", "^") for v in grid.values())
@@ -591,7 +621,9 @@ def _xhtml_parse_table(element: ET.Element) -> "Table | None":
     headers = all_content[0]
     rows = all_content[1:]
 
+
     if not needs_meta:
+        from confetti.blocks import Table
         return Table(headers=headers, rows=rows)
 
     rows_meta: list[dict] = []
@@ -615,13 +647,25 @@ def _xhtml_parse_table(element: ET.Element) -> "Table | None":
         meta_dict["tbody"] = True
     meta_dict["rows_meta"] = rows_meta
 
-    return Table(headers=headers, rows=rows, meta=json.dumps(meta_dict, separators=(",", ":")))
+    from confetti.blocks import Table
+    return Table(
+        headers=headers, rows=rows, meta=json.dumps(meta_dict, separators=(",", ":"))
+    )
 
 
 def _blocks_from_elements(elements: list[ET.Element]) -> list:
     from .blocks import CodeBlock, Heading, LayoutMacro, List, Paragraph, RawBlock, Table, TaskList
 
-    _XHTML_BLOCK_TYPES = [LayoutMacro, CodeBlock, TaskList, Heading, Paragraph, Table, List, RawBlock]
+    _XHTML_BLOCK_TYPES = [
+        LayoutMacro,
+        CodeBlock,
+        TaskList,
+        Heading,
+        Paragraph,
+        Table,
+        List,
+        RawBlock,
+    ]
 
     blocks = []
     for element in elements:
@@ -654,10 +698,19 @@ def _blocks_from_elements(elements: list[ET.Element]) -> list:
     return blocks
 
 
-def _md_blocks_from_lines(lines: list[str]) -> list:
+def md_blocks_from_lines(lines: list[str]) -> list:
     from .blocks import CodeBlock, Heading, LayoutMacro, List, Paragraph, RawBlock, Table, TaskList
 
-    _MD_BLOCK_TYPES = [LayoutMacro, CodeBlock, TaskList, RawBlock, List, Heading, Table, Paragraph]
+    _MD_BLOCK_TYPES = [
+        LayoutMacro,
+        CodeBlock,
+        TaskList,
+        RawBlock,
+        List,
+        Heading,
+        Table,
+        Paragraph,
+    ]
 
     blocks = []
     i = 0
@@ -693,12 +746,12 @@ def _md_is_sep_row(line: str) -> bool:
 
 def _md_parse_row(line: str) -> list[str]:
     _WS = " \t\n\r\f\v"
-    return [_encode_inline_xml(c.strip(_WS)) for c in line.strip().strip("|").split("|")]
+    return [
+        _encode_inline_xml(c.strip(_WS)) for c in line.strip().strip("|").split("|")
+    ]
 
 
-def _md_parse_table(lines: list[str]) -> "Table | None":
-    from .blocks import Table  # noqa: F401 — only needed for type check at runtime
-
+def md_parse_table(lines: list[str]) -> "Table | None":
     sep_idx: int | None = next(
         (i for i, ln in enumerate(lines) if _md_is_sep_row(ln)), None
     )
@@ -707,6 +760,5 @@ def _md_parse_table(lines: list[str]) -> "Table | None":
     headers = _md_parse_row(lines[sep_idx - 1])
     rows = [_md_parse_row(ln) for ln in lines[sep_idx + 1 :] if ln.strip()]
 
-    from .blocks import Table
-
+    from confetti.blocks import Table
     return Table(headers=headers, rows=rows)

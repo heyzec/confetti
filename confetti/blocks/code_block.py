@@ -5,6 +5,7 @@ import xml.etree.ElementTree as ET
 from dataclasses import dataclass
 from typing import override
 
+from ..helpers import _AC_NS, _is_macro, _local
 from .block import Block
 
 
@@ -32,8 +33,6 @@ class CodeBlock(Block):
 
     @classmethod
     def from_xhtml(cls, element: ET.Element) -> CodeBlock | None:
-        from ..helpers import _AC_NS, _is_macro, _local
-
         if not _is_macro(element.tag) or _local(element.tag) != "structured-macro":
             return None
         if element.get(f"{{{_AC_NS}}}name", "") != "code":
@@ -58,7 +57,7 @@ class CodeBlock(Block):
         line = lines[i].strip()
 
         if line.startswith("<!-- confetti:code ") and line.endswith(" -->"):
-            meta_str = line[len("<!-- confetti:code "):-len(" -->")]
+            meta_str = line[len("<!-- confetti:code ") : -len(" -->")]
             try:
                 meta = json.loads(meta_str)
             except json.JSONDecodeError:
@@ -109,9 +108,6 @@ class CodeBlock(Block):
 
     @override
     def to_xhtml(self) -> str:
-        from ..helpers import _AC_NS
-
-        ac = f"{{{_AC_NS}}}"
         parts = [
             f'<ac:structured-macro ac:name="code"'
             f' ac:schema-version="1"'
@@ -119,6 +115,8 @@ class CodeBlock(Block):
         ]
         for name, value in self.params:
             parts.append(f'<ac:parameter ac:name="{name}">{value}</ac:parameter>')
-        parts.append(f"<ac:plain-text-body><![CDATA[{self.body}]]></ac:plain-text-body>")
+        parts.append(
+            f"<ac:plain-text-body><![CDATA[{self.body}]]></ac:plain-text-body>"
+        )
         parts.append("</ac:structured-macro>")
         return "".join(parts)

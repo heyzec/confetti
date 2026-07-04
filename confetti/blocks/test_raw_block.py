@@ -1,6 +1,5 @@
 import unittest
 
-from confetti import xhtml_to_markdown
 from confetti.blocks import RawBlock
 from confetti.document import Document
 

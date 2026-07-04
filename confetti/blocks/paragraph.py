@@ -4,9 +4,19 @@ import xml.etree.ElementTree as ET
 from dataclasses import dataclass
 from typing import override
 
+from ..helpers import (
+    _ATX_HEADING,
+    _collect_inline,
+    _encode_inline_xml,
+    _inline_is_simple,
+    _is_macro,
+    _local,
+    _normalize,
+    render_for_markdown,
+    render_for_xhtml,
+)
 from .block import Block
 from .list import _OL_ITEM
-from ..helpers import _render_for_markdown, _render_for_xhtml
 
 
 @dataclass
@@ -15,9 +25,6 @@ class Paragraph(Block):
 
     @classmethod
     def from_xhtml(cls, element: ET.Element) -> Paragraph | None:
-        from ..helpers import (
-            _collect_inline, _inline_is_simple, _is_macro, _local, _normalize,
-        )
         if _is_macro(element.tag):
             return None
         if _local(element.tag) != "p":
@@ -29,15 +36,23 @@ class Paragraph(Block):
 
     @classmethod
     def from_markdown(cls, lines: list[str], i: int) -> tuple[Paragraph, int] | None:
-        from ..helpers import _ATX_HEADING, _encode_inline_xml
         para_lines: list[str] = []
         while i < len(lines):
             cur_s = lines[i].strip()
             if not cur_s or _ATX_HEADING.match(lines[i]) or "|" in cur_s:
                 break
-            if cur_s in ("<!-- confetti:raw", "<!-- confetti:layout-open", "<!-- confetti:layout-close"):
+            if cur_s in (
+                "<!-- confetti:raw",
+                "<!-- confetti:layout-open",
+                "<!-- confetti:layout-close",
+            ):
                 break
-            if cur_s.startswith("```") or cur_s.startswith("- ") or cur_s.startswith("* ") or _OL_ITEM.match(cur_s):
+            if (
+                cur_s.startswith("```")
+                or cur_s.startswith("- ")
+                or cur_s.startswith("* ")
+                or _OL_ITEM.match(cur_s)
+            ):
                 break
             para_lines.append(cur_s)
             i += 1
@@ -47,8 +62,8 @@ class Paragraph(Block):
 
     @override
     def to_markdown(self) -> str:
-        return _render_for_markdown(self.text)
+        return render_for_markdown(self.text)
 
     @override
     def to_xhtml(self) -> str:
-        return f"<p>{_render_for_xhtml(self.text)}</p>"
+        return f"<p>{render_for_xhtml(self.text)}</p>"

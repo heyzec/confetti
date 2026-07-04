@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import unittest
 
 from confetti import xhtml_to_ir, xhtml_to_markdown
@@ -22,13 +24,13 @@ class TestTableExamples(unittest.TestCase):
 
     def test_colspan_produces_span_marker(self):
         # from_xhtml → to_markdown: colspan="2" cell produces "<" in the next column
-        xhtml = "<table><tr><th colspan=\"2\">AB</th><th>C</th></tr><tr><td>D</td><td>E</td><td>F</td></tr></table>"
+        xhtml = '<table><tr><th colspan="2">AB</th><th>C</th></tr><tr><td>D</td><td>E</td><td>F</td></tr></table>'
         result = xhtml_to_markdown(xhtml)
         self.assertIn("| AB | < | C |", result)
         self.assertIn("| D | E | F |", result)
 
     def test_colspan_roundtrip(self):
-        xhtml = "<table><tr><th colspan=\"2\">AB</th><th>C</th></tr><tr><td>D</td><td>E</td><td>F</td></tr></table>"
+        xhtml = '<table><tr><th colspan="2">AB</th><th>C</th></tr><tr><td>D</td><td>E</td><td>F</td></tr></table>'
         self.assertEqual(
             Document.from_markdown(Document.from_xhtml(xhtml).to_markdown()).to_xhtml(),
             Document.from_xhtml(xhtml).to_xhtml(),
@@ -38,13 +40,13 @@ class TestTableExamples(unittest.TestCase):
 
     def test_rowspan_produces_span_marker(self):
         # from_xhtml → to_markdown: rowspan="2" cell produces "^" in the row below
-        xhtml = "<table><tr><th>A</th><th>B</th></tr><tr><td rowspan=\"2\">X</td><td>Y</td></tr><tr><td>Z</td></tr></table>"
+        xhtml = '<table><tr><th>A</th><th>B</th></tr><tr><td rowspan="2">X</td><td>Y</td></tr><tr><td>Z</td></tr></table>'
         result = xhtml_to_markdown(xhtml)
         self.assertIn("| X | Y |", result)
         self.assertIn("| ^ | Z |", result)
 
     def test_rowspan_roundtrip(self):
-        xhtml = "<table><tr><th>A</th><th>B</th></tr><tr><td rowspan=\"2\">X</td><td>Y</td></tr><tr><td>Z</td></tr></table>"
+        xhtml = '<table><tr><th>A</th><th>B</th></tr><tr><td rowspan="2">X</td><td>Y</td></tr><tr><td>Z</td></tr></table>'
         self.assertEqual(
             Document.from_markdown(Document.from_xhtml(xhtml).to_markdown()).to_xhtml(),
             Document.from_xhtml(xhtml).to_xhtml(),
@@ -55,8 +57,8 @@ class TestTableExamples(unittest.TestCase):
     def test_colspan_rowspan_combined_roundtrip(self):
         xhtml = (
             "<table>"
-            "<tr><th colspan=\"2\">AB</th><th>C</th></tr>"
-            "<tr><td rowspan=\"2\">X</td><td>Y</td><td>Y2</td></tr>"
+            '<tr><th colspan="2">AB</th><th>C</th></tr>'
+            '<tr><td rowspan="2">X</td><td>Y</td><td>Y2</td></tr>'
             "<tr><td>Z</td><td>Z2</td></tr>"
             "</table>"
         )
@@ -147,7 +149,7 @@ class TestTables(unittest.TestCase):
         doc = xhtml_to_ir("<table><tr><th>A</th></tr><tr><td>1</td></tr></table>")
         self.assertEqual(len(doc.blocks), 1)
         b = doc.blocks[0]
-        self.assertIsInstance(b, Table)
+        assert isinstance(b, Table)
         self.assertEqual(b.headers, ["A"])
         self.assertEqual(b.rows, [["1"]])
 
@@ -184,25 +186,28 @@ class TestTables(unittest.TestCase):
         self.assertIn("| ^ | Z |", result)
 
     def test_colspan_roundtrip(self):
-        from confetti.document import Document
-        xhtml = "<table><tr><th colspan=\"2\">AB</th><th>C</th></tr><tr><td>D</td><td>E</td><td>F</td></tr></table>"
+        xhtml = '<table><tr><th colspan="2">AB</th><th>C</th></tr><tr><td>D</td><td>E</td><td>F</td></tr></table>'
         md = xhtml_to_markdown(xhtml)
-        self.assertEqual(Document.from_markdown(md).to_xhtml(), Document.from_xhtml(xhtml).to_xhtml())
+        self.assertEqual(
+            Document.from_markdown(md).to_xhtml(), Document.from_xhtml(xhtml).to_xhtml()
+        )
 
     def test_rowspan_roundtrip(self):
-        from confetti.document import Document
-        xhtml = "<table><tr><th>A</th><th>B</th></tr><tr><td rowspan=\"2\">X</td><td>Y</td></tr><tr><td>Z</td></tr></table>"
+        xhtml = '<table><tr><th>A</th><th>B</th></tr><tr><td rowspan="2">X</td><td>Y</td></tr><tr><td>Z</td></tr></table>'
         md = xhtml_to_markdown(xhtml)
-        self.assertEqual(Document.from_markdown(md).to_xhtml(), Document.from_xhtml(xhtml).to_xhtml())
+        self.assertEqual(
+            Document.from_markdown(md).to_xhtml(), Document.from_xhtml(xhtml).to_xhtml()
+        )
 
     def test_span_marker_escaped_in_content(self):
-        from confetti.document import Document
         xhtml = "<table><tr><th>Key</th></tr><tr><td>&lt;</td></tr></table>"
         md = xhtml_to_markdown(xhtml)
         self.assertNotIn("| < |", md)
         self.assertIn("\\<", md)
         # Round-trip: parsed-from-markdown matches parsed-from-xhtml
-        self.assertEqual(Document.from_markdown(md).to_xhtml(), Document.from_xhtml(xhtml).to_xhtml())
+        self.assertEqual(
+            Document.from_markdown(md).to_xhtml(), Document.from_xhtml(xhtml).to_xhtml()
+        )
 
 
 if __name__ == "__main__":

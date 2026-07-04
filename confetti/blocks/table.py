@@ -5,8 +5,15 @@ import xml.etree.ElementTree as ET
 from dataclasses import dataclass, field
 from typing import override
 
+from ..helpers import (
+    _is_macro,
+    _local,
+    md_parse_table,
+    render_for_markdown,
+    render_for_xhtml,
+    xhtml_parse_table,
+)
 from .block import Block
-from ..helpers import _render_for_markdown, _render_for_xhtml
 
 
 def _attrs_str(attrs: dict) -> str:
@@ -24,19 +31,17 @@ class Table(Block):
 
     @classmethod
     def from_xhtml(cls, element: ET.Element) -> Table | None:
-        from ..helpers import _is_macro, _local, _xhtml_parse_table
         if _is_macro(element.tag) or _local(element.tag) != "table":
             return None
-        return _xhtml_parse_table(element)
+        return xhtml_parse_table(element)
 
     @classmethod
     def from_markdown(cls, lines: list[str], i: int) -> tuple[Table, int] | None:
-        from ..helpers import _md_parse_table
         line = lines[i].strip()
 
         meta: str | None = None
         if line.startswith("<!-- confetti:table ") and line.endswith(" -->"):
-            meta = line[len("<!-- confetti:table "):-len(" -->")]
+            meta = line[len("<!-- confetti:table ") : -len(" -->")]
             try:
                 json.loads(meta)
             except json.JSONDecodeError:
@@ -54,7 +59,7 @@ class Table(Block):
             table_lines.append(lines[i])
             i += 1
 
-        parsed = _md_parse_table(table_lines)
+        parsed = md_parse_table(table_lines)
         if parsed is None:
             return None
         return cls(headers=parsed.headers, rows=parsed.rows, meta=meta), i
@@ -68,7 +73,12 @@ class Table(Block):
             return row + [""] * (ncols - len(row))
 
         def esc(text: str) -> str:
-            return _render_for_markdown(text).replace("|", "\\|").replace("\n", " ").replace("\r", "")
+            return (
+                render_for_markdown(text)
+                .replace("|", "\\|")
+                .replace("\n", " ")
+                .replace("\r", "")
+            )
 
         header_line = "| " + " | ".join(esc(h) for h in pad(self.headers)) + " |"
         sep_line = "| " + " | ".join("---" for _ in range(ncols)) + " |"
@@ -87,7 +97,7 @@ class Table(Block):
     @override
     def to_xhtml(self) -> str:
         def _xhtml(text: str) -> str:
-            return _render_for_xhtml(text.replace("\\<", "<").replace("\\^", "^"))
+            return render_for_xhtml(text.replace("\\<", "<").replace("\\^", "^"))
 
         if self.meta is None:
             lines = ["<table>"]
@@ -130,7 +140,7 @@ class Table(Block):
                 tag = cm.get("tag", "td")
                 ca_str = _attrs_str(cm.get("attrs", {}))
                 if cm.get("raw"):
-                    inner = _render_for_markdown(cell_content).replace("\\|", "|")
+                    inner = render_for_markdown(cell_content).replace("\\|", "|")
                     parts.append(f"<{tag}{ca_str}>{inner}</{tag}>")
                 else:
                     prefix = cm.get("prefix", "")

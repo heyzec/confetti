@@ -5,6 +5,13 @@ import xml.etree.ElementTree as ET
 from dataclasses import dataclass
 from typing import override
 
+from ..helpers import (
+    _collect_inline,
+    _inline_is_simple,
+    _is_macro,
+    _local,
+    render_for_xhtml,
+)
 from .block import Block
 
 _UL_ITEM = re.compile(r"^[-*]\s+(.+)")
@@ -18,7 +25,6 @@ class List(Block):
 
     @classmethod
     def from_xhtml(cls, element: ET.Element) -> List | None:
-        from ..helpers import _collect_inline, _inline_is_simple, _is_macro, _local
 
         local = _local(element.tag)
         if local not in ("ul", "ol") or _is_macro(element.tag):
@@ -38,7 +44,9 @@ class List(Block):
     def from_markdown(cls, lines: list[str], i: int) -> tuple[List, int] | None:
         ul_m = _UL_ITEM.match(lines[i])
         ol_m = _OL_ITEM.match(lines[i])
-        pat, tag = (_UL_ITEM, "ul") if ul_m else (_OL_ITEM, "ol") if ol_m else (None, "")
+        pat, tag = (
+            (_UL_ITEM, "ul") if ul_m else (_OL_ITEM, "ol") if ol_m else (None, "")
+        )
         if not pat:
             return None
 
@@ -60,7 +68,5 @@ class List(Block):
 
     @override
     def to_xhtml(self) -> str:
-        from ..helpers import _render_for_xhtml
-
-        inner = "".join(f"<li>{_render_for_xhtml(item)}</li>" for item in self.items)
+        inner = "".join(f"<li>{render_for_xhtml(item)}</li>" for item in self.items)
         return f"<{self.tag}>{inner}</{self.tag}>"

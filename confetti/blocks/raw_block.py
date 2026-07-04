@@ -4,6 +4,16 @@ import xml.etree.ElementTree as ET
 from dataclasses import dataclass
 from typing import override
 
+from ..helpers import (
+    _HEADING_TAGS,
+    _LIST_TAGS,
+    _collect_inline,
+    _inline_is_simple,
+    _is_macro,
+    _local,
+    _normalize,
+    _serialize_element,
+)
 from .block import Block
 
 
@@ -15,10 +25,6 @@ class RawBlock(Block):
 
     @classmethod
     def from_xhtml(cls, element: ET.Element) -> RawBlock | None:
-        from ..helpers import (
-            _HEADING_TAGS, _LIST_TAGS, _collect_inline, _inline_is_simple,
-            _is_macro, _local, _normalize, _serialize_element,
-        )
         local = _local(element.tag)
 
         if _is_macro(element.tag):
@@ -31,7 +37,9 @@ class RawBlock(Block):
         if local == "table":
             return cls(xml=_serialize_element(element))
 
-        if local in _HEADING_TAGS and (element.attrib or not _inline_is_simple(element)):
+        if local in _HEADING_TAGS and (
+            element.attrib or not _inline_is_simple(element)
+        ):
             return cls(xml=_serialize_element(element))
 
         if local == "p":

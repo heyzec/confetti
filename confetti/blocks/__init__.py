@@ -8,4 +8,14 @@ from .raw_block import RawBlock
 from .table import Table
 from .task_list import TaskList
 
-__all__ = ["Block", "CodeBlock", "Heading", "LayoutMacro", "List", "Paragraph", "RawBlock", "Table", "TaskList"]
+__all__ = [
+    "Block",
+    "CodeBlock",
+    "Heading",
+    "LayoutMacro",
+    "List",
+    "Paragraph",
+    "RawBlock",
+    "Table",
+    "TaskList",
+]

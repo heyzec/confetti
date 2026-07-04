@@ -2,17 +2,10 @@
 
 import unittest
 
-from confetti import (
-    ir_to_xhtml,
-    ir_to_markdown,
-    markdown_to_ir,
-    markdown_to_xhtml,
-    xhtml_to_ir,
-    xhtml_to_markdown,
-)
+from confetti import markdown_to_xhtml, xhtml_to_markdown
 from confetti.blocks import Heading, Paragraph, Table
+from confetti.convert import ir_to_markdown, ir_to_xhtml, markdown_to_ir, xhtml_to_ir
 from confetti.document import Document
-
 
 # ---------------------------------------------------------------------------
 # Markdown → IR
@@ -24,37 +17,42 @@ class TestMarkdownToIR(unittest.TestCase):
         doc = markdown_to_ir("# Hello")
         self.assertEqual(len(doc.blocks), 1)
         b = doc.blocks[0]
-        self.assertIsInstance(b, Heading)
+        assert isinstance(b, Heading)
         self.assertEqual(b.level, 1)
         self.assertEqual(b.text, "Hello")
 
     def test_atx_h3(self):
         doc = markdown_to_ir("### Deep")
         b = doc.blocks[0]
-        self.assertIsInstance(b, Heading)
+        assert isinstance(b, Heading)
         self.assertEqual(b.level, 3)
 
     def test_setext_h1(self):
         doc = markdown_to_ir("Title\n=====")
-        self.assertIsInstance(doc.blocks[0], Heading)
-        self.assertEqual(doc.blocks[0].level, 1)
+        b = doc.blocks[0]
+        assert isinstance(b, Heading)
+        self.assertEqual(b.level, 1)
 
     def test_setext_h2(self):
         doc = markdown_to_ir("Subtitle\n--------")
-        self.assertIsInstance(doc.blocks[0], Heading)
-        self.assertEqual(doc.blocks[0].level, 2)
+        b = doc.blocks[0]
+        assert isinstance(b, Heading)
+        self.assertEqual(b.level, 2)
 
     def test_paragraph(self):
         doc = markdown_to_ir("Just some text.")
         self.assertEqual(len(doc.blocks), 1)
-        self.assertIsInstance(doc.blocks[0], Paragraph)
-        self.assertEqual(doc.blocks[0].text, "Just some text.")
+        b = doc.blocks[0]
+        assert isinstance(b, Paragraph)
+        self.assertEqual(b.text, "Just some text.")
 
     def test_multiline_paragraph_joined(self):
         doc = markdown_to_ir("Line one\nLine two")
         self.assertEqual(len(doc.blocks), 1)
-        self.assertIn("Line one", doc.blocks[0].text)
-        self.assertIn("Line two", doc.blocks[0].text)
+        b = doc.blocks[0]
+        assert isinstance(b, Paragraph)
+        self.assertIn("Line one", b.text)
+        self.assertIn("Line two", b.text)
 
     def test_two_paragraphs(self):
         doc = markdown_to_ir("First\n\nSecond")
@@ -65,15 +63,16 @@ class TestMarkdownToIR(unittest.TestCase):
         doc = markdown_to_ir(md)
         self.assertEqual(len(doc.blocks), 1)
         b = doc.blocks[0]
-        self.assertIsInstance(b, Table)
+        assert isinstance(b, Table)
         self.assertEqual(b.headers, ["Col1", "Col2"])
         self.assertEqual(b.rows, [["a", "b"]])
 
     def test_table_with_aligned_separator(self):
         md = "| A | B |\n| :--- | ---: |\n| 1 | 2 |"
         doc = markdown_to_ir(md)
-        self.assertIsInstance(doc.blocks[0], Table)
-        self.assertEqual(doc.blocks[0].headers, ["A", "B"])
+        b = doc.blocks[0]
+        assert isinstance(b, Table)
+        self.assertEqual(b.headers, ["A", "B"])
 
     def test_mixed_blocks(self):
         md = "# Heading\n\nParagraph.\n\n## Sub\n\nMore."
@@ -89,17 +88,14 @@ class TestMarkdownToIR(unittest.TestCase):
 
 class TestIRToXHTML(unittest.TestCase):
     def test_heading(self):
-        from confetti.document import Document
         doc = Document(blocks=[Heading(level=1, text="Hi")])
         self.assertEqual(ir_to_xhtml(doc), "<h1>Hi</h1>")
 
     def test_paragraph(self):
-        from confetti.document import Document
         doc = Document(blocks=[Paragraph(text="Hello")])
         self.assertEqual(ir_to_xhtml(doc), "<p>Hello</p>")
 
     def test_paragraph_escaping(self):
-        from confetti.document import Document
         doc = Document(blocks=[Paragraph(text="a < b & c > d")])
         xhtml = ir_to_xhtml(doc)
         self.assertIn("&lt;", xhtml)
@@ -107,7 +103,6 @@ class TestIRToXHTML(unittest.TestCase):
         self.assertIn("&gt;", xhtml)
 
     def test_table(self):
-        from confetti.document import Document
         doc = Document(blocks=[Table(headers=["A", "B"], rows=[["1", "2"]])])
         xhtml = ir_to_xhtml(doc)
         self.assertIn("<table>", xhtml)

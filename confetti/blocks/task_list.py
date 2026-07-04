@@ -18,11 +18,27 @@ class TaskList(Block):
     @classmethod
     def from_xhtml(cls, element: ET.Element) -> TaskList | None:
         from ..helpers import (
-            _blocks_from_elements, _collect_inline, _inline_is_simple,
-            _is_macro, _local, _normalize,
+            _blocks_from_elements,
+            _collect_inline,
+            _inline_is_simple,
+            _is_macro,
+            _local,
+            _normalize,
         )
 
-        _BLOCK_LOCALS = {"p", "ul", "ol", "h1", "h2", "h3", "h4", "h5", "h6", "pre", "table"}
+        _BLOCK_LOCALS = {
+            "p",
+            "ul",
+            "ol",
+            "h1",
+            "h2",
+            "h3",
+            "h4",
+            "h5",
+            "h6",
+            "pre",
+            "table",
+        }
 
         if not _is_macro(element.tag) or _local(element.tag) != "task-list":
             return None
@@ -44,12 +60,15 @@ class TaskList(Block):
                     children = list(child)
                     has_block = any(
                         _local(c.tag) in _BLOCK_LOCALS
-                        for c in children if not _is_macro(c.tag)
+                        for c in children
+                        if not _is_macro(c.tag)
                     )
                     has_direct_text = bool(child.text and child.text.strip())
                     if has_block and not has_direct_text:
                         blocks = _blocks_from_elements(children)
-                        body_md = "\n".join(b.to_markdown() for b in blocks) if blocks else ""
+                        body_md = (
+                            "\n".join(b.to_markdown() for b in blocks) if blocks else ""
+                        )
                     elif _inline_is_simple(child):
                         body_md = _normalize(_collect_inline(child))
                     else:

@@ -12,7 +12,7 @@ try:
 except ImportError:
     dotenv = None  # type: ignore[assignment]
 
-from .convert import xhtml_to_ir, markdown_to_ir, ir_to_markdown, ir_to_xhtml
+from .convert import ir_to_markdown, ir_to_xhtml, markdown_to_ir, xhtml_to_ir
 
 
 def _read(path: str) -> str:
@@ -42,7 +42,9 @@ def _resolve_page_id(value: str, auth_headers: dict) -> str:
         with urllib.request.urlopen(req) as resp:
             final_url = resp.url
     except urllib.error.HTTPError as exc:
-        raise ValueError(f"Could not resolve page URL: {exc.code} {exc.reason}") from exc
+        raise ValueError(
+            f"Could not resolve page URL: {exc.code} {exc.reason}"
+        ) from exc
     parsed = urllib.parse.urlparse(final_url)
     parts = parsed.path.split("/")
     if len(parts) < 4 or parts[1] != "display":
@@ -60,7 +62,9 @@ def _resolve_page_id(value: str, auth_headers: dict) -> str:
         with urllib.request.urlopen(api_req) as resp:
             data = json.loads(resp.read().decode())
     except urllib.error.HTTPError as exc:
-        raise ValueError(f"Could not look up page by title: {exc.code} {exc.reason}") from exc
+        raise ValueError(
+            f"Could not look up page by title: {exc.code} {exc.reason}"
+        ) from exc
     results = data.get("results", [])
     if not results:
         raise ValueError(f"No page found for space={space_key!r} title={title!r}")
@@ -84,7 +88,9 @@ def cmd_download(args: argparse.Namespace) -> None:
     if not token:
         raise ValueError("CONFLUENCE_TOKEN environment variable not set")
 
-    base_url = os.environ.get("CONFLUENCE_URL", "https://confluence.shopee.io").rstrip("/")
+    base_url = os.environ.get("CONFLUENCE_URL", "https://confluence.shopee.io").rstrip(
+        "/"
+    )
     auth_headers = {"Authorization": f"Bearer {token}"}
     page_id = _resolve_page_id(args.page, auth_headers)
 
@@ -111,7 +117,9 @@ def cmd_upload(args: argparse.Namespace) -> None:
     if not token:
         raise ValueError("CONFLUENCE_TOKEN environment variable not set")
 
-    base_url = os.environ.get("CONFLUENCE_URL", "https://confluence.shopee.io").rstrip("/")
+    base_url = os.environ.get("CONFLUENCE_URL", "https://confluence.shopee.io").rstrip(
+        "/"
+    )
     auth_headers = {
         "Authorization": f"Bearer {token}",
         "Content-Type": "application/json",
@@ -136,22 +144,28 @@ def cmd_upload(args: argparse.Namespace) -> None:
         xhtml = raw
 
     put_url = f"{base_url}/rest/api/content/{page_id}?expand=body.storage"
-    body = json.dumps({
-        "version": {"number": current_version + 1},
-        "type": "page",
-        "title": title,
-        "body": {"storage": {"value": xhtml, "representation": "storage"}},
-    }).encode()
+    body = json.dumps(
+        {
+            "version": {"number": current_version + 1},
+            "type": "page",
+            "title": title,
+            "body": {"storage": {"value": xhtml, "representation": "storage"}},
+        }
+    ).encode()
     req = urllib.request.Request(put_url, data=body, headers=auth_headers, method="PUT")
     try:
         with urllib.request.urlopen(req) as resp:
             result = json.loads(resp.read().decode())
     except urllib.error.HTTPError as exc:
         detail = exc.read().decode()
-        raise ValueError(f"PUT page {page_id} failed: {exc.code} {exc.reason}\n{detail}") from exc
+        raise ValueError(
+            f"PUT page {page_id} failed: {exc.code} {exc.reason}\n{detail}"
+        ) from exc
 
     new_version = result["version"]["number"]
-    print(f"Updated '{title}' (page {page_id}) → version {new_version}", file=sys.stderr)
+    print(
+        f"Updated '{title}' (page {page_id}) → version {new_version}", file=sys.stderr
+    )
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -189,13 +203,27 @@ def build_parser() -> argparse.ArgumentParser:
 
     # download
     p3 = sub.add_parser("download", help="Download a Confluence page to a file")
-    p3.add_argument("--page", "-p", required=True, metavar="ID_OR_URL", help="Confluence page ID or URL")
-    p3.add_argument("file", metavar="FILE", help="Output file (.md triggers Markdown conversion)")
+    p3.add_argument(
+        "--page",
+        "-p",
+        required=True,
+        metavar="ID_OR_URL",
+        help="Confluence page ID or URL",
+    )
+    p3.add_argument(
+        "file", metavar="FILE", help="Output file (.md triggers Markdown conversion)"
+    )
     p3.set_defaults(func=cmd_download)
 
     # upload
     p4 = sub.add_parser("upload", help="Upload XHTML to a Confluence page")
-    p4.add_argument("--page", "-p", required=True, metavar="ID_OR_URL", help="Confluence page ID or URL")
+    p4.add_argument(
+        "--page",
+        "-p",
+        required=True,
+        metavar="ID_OR_URL",
+        help="Confluence page ID or URL",
+    )
     p4.add_argument("file", metavar="FILE", help="XHTML file to upload")
     p4.set_defaults(func=cmd_upload)
 

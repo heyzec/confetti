@@ -1,8 +1,8 @@
 import unittest
 
 from confetti import xhtml_to_ir, xhtml_to_markdown
-from confetti.document import Document
 from confetti.blocks import RawBlock, TaskList
+from confetti.document import Document
 
 
 class TestTaskList(unittest.TestCase):
@@ -17,14 +17,14 @@ class TestTaskList(unittest.TestCase):
         doc = xhtml_to_ir(xhtml)
         self.assertEqual(len(doc.blocks), 1)
         b = doc.blocks[0]
-        self.assertIsInstance(b, TaskList)
+        assert isinstance(b, TaskList)
         self.assertEqual(b.tasks, [(1, "incomplete", "do something")])
 
     def test_complete_status(self):
         xhtml = self._xhtml(self._task(5, "complete", "done"))
         doc = xhtml_to_ir(xhtml)
         b = doc.blocks[0]
-        self.assertIsInstance(b, TaskList)
+        assert isinstance(b, TaskList)
         self.assertEqual(b.tasks[0][1], "complete")
 
     def test_to_markdown_incomplete(self):
@@ -62,7 +62,9 @@ class TestTaskList(unittest.TestCase):
         )
 
     def test_roundtrip_with_inline_code(self):
-        xhtml = self._xhtml(self._task(1, "incomplete", "merge <code>master</code> branch"))
+        xhtml = self._xhtml(
+            self._task(1, "incomplete", "merge <code>master</code> branch")
+        )
         self.assertEqual(
             Document.from_markdown(Document.from_xhtml(xhtml).to_markdown()).to_xhtml(),
             Document.from_xhtml(xhtml).to_xhtml(),
@@ -70,7 +72,11 @@ class TestTaskList(unittest.TestCase):
 
     def test_roundtrip_with_link(self):
         xhtml = self._xhtml(
-            self._task(1, "incomplete", 'configure <a href="https://example.com">WSA Gateway</a>')
+            self._task(
+                1,
+                "incomplete",
+                'configure <a href="https://example.com">WSA Gateway</a>',
+            )
         )
         self.assertEqual(
             Document.from_markdown(Document.from_xhtml(xhtml).to_markdown()).to_xhtml(),
@@ -80,15 +86,15 @@ class TestTaskList(unittest.TestCase):
     def test_complex_body_falls_back_to_rawblock(self):
         # span with style attribute is not simple inline → RawBlock
         xhtml = self._xhtml(
-            self._task(5, "incomplete", '<span style="color: rgb(51,51,51);">styled</span>')
+            self._task(
+                5, "incomplete", '<span style="color: rgb(51,51,51);">styled</span>'
+            )
         )
         doc = xhtml_to_ir(xhtml)
         self.assertIsInstance(doc.blocks[0], RawBlock)
 
     def test_body_with_ul_falls_back_to_rawblock(self):
-        xhtml = self._xhtml(
-            self._task(99, "complete", "text<ul><li>item</li></ul>")
-        )
+        xhtml = self._xhtml(self._task(99, "complete", "text<ul><li>item</li></ul>"))
         doc = xhtml_to_ir(xhtml)
         self.assertIsInstance(doc.blocks[0], RawBlock)
 

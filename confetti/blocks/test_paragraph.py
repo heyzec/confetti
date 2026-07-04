@@ -65,11 +65,15 @@ class TestInlineExamples(unittest.TestCase):
 
     def test_strikethrough(self):
         self.assertEqual(
-            xhtml_to_markdown("<p><s>The world is flat.</s> We now know that the world is round.</p>"),
+            xhtml_to_markdown(
+                "<p><s>The world is flat.</s> We now know that the world is round.</p>"
+            ),
             "~~The world is flat.~~ We now know that the world is round.",
         )
         self.assertEqual(
-            Document.from_markdown("~~The world is flat.~~ We now know that the world is round.").to_xhtml(),
+            Document.from_markdown(
+                "~~The world is flat.~~ We now know that the world is round."
+            ).to_xhtml(),
             "<p><s>The world is flat.</s> We now know that the world is round.</p>",
         )
 
@@ -89,32 +93,42 @@ class TestInlineExamples(unittest.TestCase):
 
     def test_link(self):
         self.assertEqual(
-            xhtml_to_markdown('<p>My favorite search engine is <a href="https://duckduckgo.com">Duck Duck Go</a>.</p>'),
+            xhtml_to_markdown(
+                '<p>My favorite search engine is <a href="https://duckduckgo.com">Duck Duck Go</a>.</p>'
+            ),
             "My favorite search engine is [Duck Duck Go](https://duckduckgo.com).",
         )
         self.assertEqual(
-            Document.from_markdown("My favorite search engine is [Duck Duck Go](https://duckduckgo.com).").to_xhtml(),
+            Document.from_markdown(
+                "My favorite search engine is [Duck Duck Go](https://duckduckgo.com)."
+            ).to_xhtml(),
             '<p>My favorite search engine is <a href="https://duckduckgo.com">Duck Duck Go</a>.</p>',
         )
 
     def test_bold_link(self):
         # from_xhtml only: **[EFF](https://eff.org)**
         self.assertEqual(
-            xhtml_to_markdown('<p>I love supporting the <strong><a href="https://eff.org">EFF</a></strong>.</p>'),
+            xhtml_to_markdown(
+                '<p>I love supporting the <strong><a href="https://eff.org">EFF</a></strong>.</p>'
+            ),
             "I love supporting the **[EFF](https://eff.org)**.",
         )
 
     def test_italic_link(self):
         # from_xhtml only: *[Markdown Guide](url)*
         self.assertEqual(
-            xhtml_to_markdown('<p>This is the <em><a href="https://www.markdownguide.org">Markdown Guide</a></em>.</p>'),
+            xhtml_to_markdown(
+                '<p>This is the <em><a href="https://www.markdownguide.org">Markdown Guide</a></em>.</p>'
+            ),
             "This is the *[Markdown Guide](https://www.markdownguide.org)*.",
         )
 
     def test_code_link(self):
         # from_xhtml only: [`code`](url)
         self.assertEqual(
-            xhtml_to_markdown('<p>See the section on <a href="##code"><code>code</code></a>.</p>'),
+            xhtml_to_markdown(
+                '<p>See the section on <a href="##code"><code>code</code></a>.</p>'
+            ),
             "See the section on [`code`](##code).",
         )
 

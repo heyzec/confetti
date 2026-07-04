@@ -1,6 +1,5 @@
-from .blocks import Block, Heading, Paragraph, Table
+from .convert import ir_to_markdown, ir_to_xhtml, markdown_to_ir, xhtml_to_ir
 from .document import Document
-from .convert import xhtml_to_ir, markdown_to_ir, ir_to_markdown, ir_to_xhtml
 
 
 def xhtml_to_markdown(xhtml: str) -> str:
@@ -12,11 +11,7 @@ def markdown_to_xhtml(markdown: str) -> str:
 
 
 __all__ = [
-    "Block",
     "Document",
-    "Heading",
-    "Paragraph",
-    "Table",
     "xhtml_to_ir",
     "markdown_to_ir",
     "ir_to_markdown",
