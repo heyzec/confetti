@@ -2,9 +2,15 @@
 
 import unittest
 
-from confetti import markdown_to_xhtml, xhtml_to_markdown
 from confetti.blocks import Heading, Paragraph, Table
-from confetti.convert import ir_to_markdown, ir_to_xhtml, markdown_to_ir, xhtml_to_ir
+from confetti.convert import (
+    markdown_to_xhtml,
+    parse_markdown,
+    parse_xhtml,
+    render_markdown,
+    render_xhtml,
+    xhtml_to_markdown,
+)
 from confetti.document import Document
 
 # ---------------------------------------------------------------------------
@@ -14,7 +20,7 @@ from confetti.document import Document
 
 class TestMarkdownToIR(unittest.TestCase):
     def test_atx_h1(self):
-        doc = markdown_to_ir("# Hello")
+        doc = parse_markdown("# Hello")
         self.assertEqual(len(doc.blocks), 1)
         b = doc.blocks[0]
         assert isinstance(b, Heading)
@@ -22,32 +28,32 @@ class TestMarkdownToIR(unittest.TestCase):
         self.assertEqual(b.text, "Hello")
 
     def test_atx_h3(self):
-        doc = markdown_to_ir("### Deep")
+        doc = parse_markdown("### Deep")
         b = doc.blocks[0]
         assert isinstance(b, Heading)
         self.assertEqual(b.level, 3)
 
     def test_setext_h1(self):
-        doc = markdown_to_ir("Title\n=====")
+        doc = parse_markdown("Title\n=====")
         b = doc.blocks[0]
         assert isinstance(b, Heading)
         self.assertEqual(b.level, 1)
 
     def test_setext_h2(self):
-        doc = markdown_to_ir("Subtitle\n--------")
+        doc = parse_markdown("Subtitle\n--------")
         b = doc.blocks[0]
         assert isinstance(b, Heading)
         self.assertEqual(b.level, 2)
 
     def test_paragraph(self):
-        doc = markdown_to_ir("Just some text.")
+        doc = parse_markdown("Just some text.")
         self.assertEqual(len(doc.blocks), 1)
         b = doc.blocks[0]
         assert isinstance(b, Paragraph)
         self.assertEqual(b.text, "Just some text.")
 
     def test_multiline_paragraph_joined(self):
-        doc = markdown_to_ir("Line one\nLine two")
+        doc = parse_markdown("Line one\nLine two")
         self.assertEqual(len(doc.blocks), 1)
         b = doc.blocks[0]
         assert isinstance(b, Paragraph)
@@ -55,12 +61,12 @@ class TestMarkdownToIR(unittest.TestCase):
         self.assertIn("Line two", b.text)
 
     def test_two_paragraphs(self):
-        doc = markdown_to_ir("First\n\nSecond")
+        doc = parse_markdown("First\n\nSecond")
         self.assertEqual(len(doc.blocks), 2)
 
     def test_table(self):
         md = "| Col1 | Col2 |\n|------|------|\n| a | b |"
-        doc = markdown_to_ir(md)
+        doc = parse_markdown(md)
         self.assertEqual(len(doc.blocks), 1)
         b = doc.blocks[0]
         assert isinstance(b, Table)
@@ -69,14 +75,14 @@ class TestMarkdownToIR(unittest.TestCase):
 
     def test_table_with_aligned_separator(self):
         md = "| A | B |\n| :--- | ---: |\n| 1 | 2 |"
-        doc = markdown_to_ir(md)
+        doc = parse_markdown(md)
         b = doc.blocks[0]
         assert isinstance(b, Table)
         self.assertEqual(b.headers, ["A", "B"])
 
     def test_mixed_blocks(self):
         md = "# Heading\n\nParagraph.\n\n## Sub\n\nMore."
-        doc = markdown_to_ir(md)
+        doc = parse_markdown(md)
         types = [type(b).__name__ for b in doc.blocks]
         self.assertEqual(types, ["Heading", "Paragraph", "Heading", "Paragraph"])
 
@@ -89,22 +95,22 @@ class TestMarkdownToIR(unittest.TestCase):
 class TestIRToXHTML(unittest.TestCase):
     def test_heading(self):
         doc = Document(blocks=[Heading(level=1, text="Hi")])
-        self.assertEqual(ir_to_xhtml(doc), "<h1>Hi</h1>")
+        self.assertEqual(render_xhtml(doc), "<h1>Hi</h1>")
 
     def test_paragraph(self):
         doc = Document(blocks=[Paragraph(text="Hello")])
-        self.assertEqual(ir_to_xhtml(doc), "<p>Hello</p>")
+        self.assertEqual(render_xhtml(doc), "<p>Hello</p>")
 
     def test_paragraph_escaping(self):
         doc = Document(blocks=[Paragraph(text="a < b & c > d")])
-        xhtml = ir_to_xhtml(doc)
+        xhtml = render_xhtml(doc)
         self.assertIn("&lt;", xhtml)
         self.assertIn("&amp;", xhtml)
         self.assertIn("&gt;", xhtml)
 
     def test_table(self):
         doc = Document(blocks=[Table(headers=["A", "B"], rows=[["1", "2"]])])
-        xhtml = ir_to_xhtml(doc)
+        xhtml = render_xhtml(doc)
         self.assertIn("<table>", xhtml)
         self.assertIn("<th>A</th>", xhtml)
         self.assertIn("<th>B</th>", xhtml)
@@ -149,8 +155,8 @@ class TestMarkdownToXHTML(unittest.TestCase):
 class TestRoundTrip(unittest.TestCase):
     def _roundtrip(self, xhtml: str) -> str:
         md = xhtml_to_markdown(xhtml)
-        ir = markdown_to_ir(md)
-        return ir_to_xhtml(ir)
+        ir = parse_markdown(md)
+        return render_xhtml(ir)
 
     def test_strong_roundtrip(self):
         xhtml = "<p>Hello <strong>bold</strong> world</p>"
@@ -229,14 +235,14 @@ class TestRoundTrip(unittest.TestCase):
 
     def test_block_count_preserved(self):
         xhtml = "<h1>A</h1><p>B</p><h2>C</h2>"
-        ir_original = xhtml_to_ir(xhtml)
-        md = ir_to_markdown(ir_original)
-        ir_roundtrip = markdown_to_ir(md)
+        ir_original = parse_xhtml(xhtml)
+        md = render_markdown(ir_original)
+        ir_roundtrip = parse_markdown(md)
         self.assertEqual(len(ir_original.blocks), len(ir_roundtrip.blocks))
 
     def test_escaped_asterisk_not_bullet(self):
         md = r"\* Without the backslash, this would be a bullet in an unordered list."
-        xhtml = ir_to_xhtml(markdown_to_ir(md))
+        xhtml = render_xhtml(parse_markdown(md))
         self.assertIn("* Without", xhtml)
         self.assertNotIn("<ul>", xhtml)
         self.assertNotIn("<li>", xhtml)

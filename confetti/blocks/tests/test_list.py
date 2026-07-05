@@ -2,7 +2,7 @@ import unittest
 
 from confetti import xhtml_to_markdown
 from confetti.blocks import List, RawBlock
-from confetti.document import Document
+from confetti.convert import markdown_to_xhtml, parse_markdown, parse_xhtml
 
 
 class TestList(unittest.TestCase):
@@ -17,14 +17,14 @@ class TestList(unittest.TestCase):
         self.assertIn("2. Second", result)
 
     def test_ul_from_markdown(self):
-        doc = Document.from_markdown("- Alpha\n- Beta\n")
+        doc = parse_markdown("- Alpha\n- Beta\n")
         self.assertEqual(len(doc.blocks), 1)
         assert isinstance(doc.blocks[0], List)
         self.assertEqual(doc.blocks[0].tag, "ul")
         self.assertEqual(doc.blocks[0].items, ["Alpha", "Beta"])
 
     def test_ol_from_markdown(self):
-        doc = Document.from_markdown("1. First\n2. Second\n")
+        doc = parse_markdown("1. First\n2. Second\n")
         self.assertEqual(len(doc.blocks), 1)
         assert isinstance(doc.blocks[0], List)
         self.assertEqual(doc.blocks[0].tag, "ol")
@@ -32,32 +32,32 @@ class TestList(unittest.TestCase):
     def test_roundtrip_ul(self):
         xhtml = "<ul><li>Alpha</li><li>Beta</li></ul>"
         self.assertEqual(
-            Document.from_markdown(Document.from_xhtml(xhtml).to_markdown()).to_xhtml(),
+            markdown_to_xhtml(xhtml_to_markdown(xhtml)),
             xhtml,
         )
 
     def test_roundtrip_ol(self):
         xhtml = "<ol><li>First</li><li>Second</li></ol>"
         self.assertEqual(
-            Document.from_markdown(Document.from_xhtml(xhtml).to_markdown()).to_xhtml(),
+            markdown_to_xhtml(xhtml_to_markdown(xhtml)),
             xhtml,
         )
 
     def test_paragraph_not_swallowed_by_adjacent_ol(self):
         md = "Intro\n1. First\n2. Second\n"
-        doc = Document.from_markdown(md)
+        doc = parse_markdown(md)
         self.assertEqual(len(doc.blocks), 2)
         self.assertIsInstance(doc.blocks[1], List)
 
     def test_paragraph_not_swallowed_by_adjacent_ul(self):
         md = "Intro\n- Alpha\n- Beta\n"
-        doc = Document.from_markdown(md)
+        doc = parse_markdown(md)
         self.assertEqual(len(doc.blocks), 2)
         self.assertIsInstance(doc.blocks[1], List)
 
     def test_complex_list_falls_back_to_raw(self):
         xhtml = "<ul><li><p>nested</p><p>block</p></li></ul>"
-        doc = Document.from_xhtml(xhtml)
+        doc = parse_xhtml(xhtml)
         self.assertIsInstance(doc.blocks[0], RawBlock)
 
 

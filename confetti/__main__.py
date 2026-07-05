@@ -7,12 +7,12 @@ import urllib.error
 import urllib.parse
 import urllib.request
 
+from confetti.convert import markdown_to_xhtml, xhtml_to_markdown
+
 try:
     import dotenv
 except ImportError:
     dotenv = None  # type: ignore[assignment]
-
-from .convert import ir_to_markdown, ir_to_xhtml, markdown_to_ir, xhtml_to_ir
 
 
 def _read(path: str) -> str:
@@ -73,13 +73,13 @@ def _resolve_page_id(value: str, auth_headers: dict) -> str:
 
 def cmd_to_md(args: argparse.Namespace) -> None:
     xhtml = _read(args.input)
-    md = ir_to_markdown(xhtml_to_ir(xhtml))
+    md = xhtml_to_markdown(xhtml)
     _write(args.output, md)
 
 
 def cmd_to_xhtml(args: argparse.Namespace) -> None:
     md = _read(args.input)
-    xhtml = ir_to_xhtml(markdown_to_ir(md))
+    xhtml = markdown_to_xhtml(md)
     _write(args.output, xhtml)
 
 
@@ -105,7 +105,7 @@ def cmd_download(args: argparse.Namespace) -> None:
     xhtml = page["body"]["storage"]["value"]
 
     if args.file.endswith(".md"):
-        content = ir_to_markdown(xhtml_to_ir(xhtml))
+        content = xhtml_to_markdown(xhtml)
     else:
         content = xhtml
 
@@ -139,7 +139,7 @@ def cmd_upload(args: argparse.Namespace) -> None:
 
     raw = _read(args.file)
     if args.file.endswith(".md"):
-        xhtml = ir_to_xhtml(markdown_to_ir(raw))
+        xhtml = markdown_to_xhtml(raw)
     else:
         xhtml = raw
 

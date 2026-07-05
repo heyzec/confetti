@@ -1,8 +1,8 @@
 import unittest
 
-from confetti import xhtml_to_ir, xhtml_to_markdown
+from confetti import markdown_to_xhtml, xhtml_to_markdown
 from confetti.blocks import RawBlock, TaskList
-from confetti.document import Document
+from confetti.convert import parse_xhtml, render_xhtml, xhtml_to_markdown
 
 
 class TestTaskList(unittest.TestCase):
@@ -14,7 +14,7 @@ class TestTaskList(unittest.TestCase):
 
     def test_basic_parse(self):
         xhtml = self._xhtml(self._task(1, "incomplete", "do something"))
-        doc = xhtml_to_ir(xhtml)
+        doc = parse_xhtml(xhtml)
         self.assertEqual(len(doc.blocks), 1)
         b = doc.blocks[0]
         assert isinstance(b, TaskList)
@@ -22,7 +22,7 @@ class TestTaskList(unittest.TestCase):
 
     def test_complete_status(self):
         xhtml = self._xhtml(self._task(5, "complete", "done"))
-        doc = xhtml_to_ir(xhtml)
+        doc = parse_xhtml(xhtml)
         b = doc.blocks[0]
         assert isinstance(b, TaskList)
         self.assertEqual(b.tasks[0][1], "complete")
@@ -50,15 +50,15 @@ class TestTaskList(unittest.TestCase):
     def test_roundtrip_simple(self):
         xhtml = self._xhtml(self._task(1, "incomplete", "apply for permissions"))
         self.assertEqual(
-            Document.from_markdown(Document.from_xhtml(xhtml).to_markdown()).to_xhtml(),
-            Document.from_xhtml(xhtml).to_xhtml(),
+            markdown_to_xhtml(xhtml_to_markdown(xhtml)),
+            render_xhtml(parse_xhtml(xhtml)),
         )
 
     def test_roundtrip_complete(self):
         xhtml = self._xhtml(self._task(1, "complete", "reviewed"))
         self.assertEqual(
-            Document.from_markdown(Document.from_xhtml(xhtml).to_markdown()).to_xhtml(),
-            Document.from_xhtml(xhtml).to_xhtml(),
+            markdown_to_xhtml(xhtml_to_markdown(xhtml)),
+            render_xhtml(parse_xhtml(xhtml)),
         )
 
     def test_roundtrip_with_inline_code(self):
@@ -66,8 +66,8 @@ class TestTaskList(unittest.TestCase):
             self._task(1, "incomplete", "merge <code>master</code> branch")
         )
         self.assertEqual(
-            Document.from_markdown(Document.from_xhtml(xhtml).to_markdown()).to_xhtml(),
-            Document.from_xhtml(xhtml).to_xhtml(),
+            markdown_to_xhtml(xhtml_to_markdown(xhtml)),
+            render_xhtml(parse_xhtml(xhtml)),
         )
 
     def test_roundtrip_with_link(self):
@@ -79,8 +79,8 @@ class TestTaskList(unittest.TestCase):
             )
         )
         self.assertEqual(
-            Document.from_markdown(Document.from_xhtml(xhtml).to_markdown()).to_xhtml(),
-            Document.from_xhtml(xhtml).to_xhtml(),
+            markdown_to_xhtml(xhtml_to_markdown(xhtml)),
+            render_xhtml(parse_xhtml(xhtml)),
         )
 
     def test_complex_body_falls_back_to_rawblock(self):
@@ -90,12 +90,12 @@ class TestTaskList(unittest.TestCase):
                 5, "incomplete", '<span style="color: rgb(51,51,51);">styled</span>'
             )
         )
-        doc = xhtml_to_ir(xhtml)
+        doc = parse_xhtml(xhtml)
         self.assertIsInstance(doc.blocks[0], RawBlock)
 
     def test_body_with_ul_falls_back_to_rawblock(self):
         xhtml = self._xhtml(self._task(99, "complete", "text<ul><li>item</li></ul>"))
-        doc = xhtml_to_ir(xhtml)
+        doc = parse_xhtml(xhtml)
         self.assertIsInstance(doc.blocks[0], RawBlock)
 
 

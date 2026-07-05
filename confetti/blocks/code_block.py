@@ -5,7 +5,8 @@ import xml.etree.ElementTree as ET
 from dataclasses import dataclass
 from typing import override
 
-from ..helpers import _AC_NS, _is_macro, _local
+from ..constants import AC_NS
+from ..xhtml import is_local, is_macro
 from .block import Block
 
 
@@ -33,19 +34,19 @@ class CodeBlock(Block):
 
     @classmethod
     def from_xhtml(cls, element: ET.Element) -> CodeBlock | None:
-        if not _is_macro(element.tag) or _local(element.tag) != "structured-macro":
+        if not is_macro(element.tag) or is_local(element.tag) != "structured-macro":
             return None
-        if element.get(f"{{{_AC_NS}}}name", "") != "code":
+        if element.get(f"{{{AC_NS}}}name", "") != "code":
             return None
 
-        macro_id = element.get(f"{{{_AC_NS}}}macro-id", "")
+        macro_id = element.get(f"{{{AC_NS}}}macro-id", "")
         params: list[tuple[str, str]] = []
         body = ""
 
         for child in element:
-            local = _local(child.tag)
+            local = is_local(child.tag)
             if local == "parameter":
-                name = child.get(f"{{{_AC_NS}}}name", "")
+                name = child.get(f"{{{AC_NS}}}name", "")
                 params.append((name, child.text or ""))
             elif local == "plain-text-body":
                 body = child.text or ""

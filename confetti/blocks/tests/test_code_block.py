@@ -1,14 +1,19 @@
 import unittest
 
-from confetti import xhtml_to_ir, xhtml_to_markdown
 from confetti.blocks import CodeBlock
-from confetti.document import Document
+from confetti.convert import (
+    markdown_to_xhtml,
+    parse_markdown,
+    parse_xhtml,
+    render_xhtml,
+    xhtml_to_markdown,
+)
 
 
 class TestCodeBlock(unittest.TestCase):
     def test_basic_parse(self):
         xhtml = '<ac:structured-macro ac:name="code" ac:schema-version="1" ac:macro-id="abc"><ac:parameter ac:name="language">python</ac:parameter><ac:plain-text-body><![CDATA[print("hi")]]></ac:plain-text-body></ac:structured-macro>'
-        doc = xhtml_to_ir(xhtml)
+        doc = parse_xhtml(xhtml)
         self.assertEqual(len(doc.blocks), 1)
         b = doc.blocks[0]
         assert isinstance(b, CodeBlock)
@@ -32,7 +37,7 @@ class TestCodeBlock(unittest.TestCase):
 
     def test_extra_params_preserved(self):
         xhtml = '<ac:structured-macro ac:name="code" ac:schema-version="1" ac:macro-id="p1"><ac:parameter ac:name="title">My Title</ac:parameter><ac:parameter ac:name="linenumbers">true</ac:parameter><ac:parameter ac:name="collapse">true</ac:parameter><ac:plain-text-body><![CDATA[x = 1]]></ac:plain-text-body></ac:structured-macro>'
-        doc = xhtml_to_ir(xhtml)
+        doc = parse_xhtml(xhtml)
         b = doc.blocks[0]
         assert isinstance(b, CodeBlock)
         self.assertEqual(
@@ -42,36 +47,30 @@ class TestCodeBlock(unittest.TestCase):
 
     def test_roundtrip_with_language(self):
         xhtml = '<ac:structured-macro ac:name="code" ac:schema-version="1" ac:macro-id="r1"><ac:parameter ac:name="language">sql</ac:parameter><ac:parameter ac:name="title">q</ac:parameter><ac:parameter ac:name="linenumbers">true</ac:parameter><ac:plain-text-body><![CDATA[SELECT 1]]></ac:plain-text-body></ac:structured-macro>'
-        md = Document.from_xhtml(xhtml).to_markdown()
-        self.assertEqual(
-            Document.from_markdown(md).to_xhtml(), Document.from_xhtml(xhtml).to_xhtml()
-        )
+        md = xhtml_to_markdown(xhtml)
+        self.assertEqual(markdown_to_xhtml(md), render_xhtml(parse_xhtml(xhtml)))
 
     def test_roundtrip_no_params(self):
         xhtml = '<ac:structured-macro ac:name="code" ac:schema-version="1" ac:macro-id="r2"><ac:plain-text-body><![CDATA[hello world]]></ac:plain-text-body></ac:structured-macro>'
-        md = Document.from_xhtml(xhtml).to_markdown()
-        self.assertEqual(
-            Document.from_markdown(md).to_xhtml(), Document.from_xhtml(xhtml).to_xhtml()
-        )
+        md = xhtml_to_markdown(xhtml)
+        self.assertEqual(markdown_to_xhtml(md), render_xhtml(parse_xhtml(xhtml)))
 
     def test_multiline_body(self):
         xhtml = '<ac:structured-macro ac:name="code" ac:schema-version="1" ac:macro-id="m1"><ac:parameter ac:name="language">python</ac:parameter><ac:plain-text-body><![CDATA[def f():\n    return 1]]></ac:plain-text-body></ac:structured-macro>'
-        md = Document.from_xhtml(xhtml).to_markdown()
+        md = xhtml_to_markdown(xhtml)
         self.assertIn("def f():", md)
         self.assertIn("    return 1", md)
-        self.assertEqual(
-            Document.from_markdown(md).to_xhtml(), Document.from_xhtml(xhtml).to_xhtml()
-        )
+        self.assertEqual(markdown_to_xhtml(md), render_xhtml(parse_xhtml(xhtml)))
 
     def test_bare_fence_no_header(self):
         md = "```python\nprint(1)\n```"
-        doc = Document.from_markdown(md)
+        doc = parse_markdown(md)
         self.assertIsInstance(doc.blocks[0], CodeBlock)
         self.assertEqual(doc.blocks[0].to_markdown(), md)
 
     def test_bare_fence_roundtrip_to_xhtml(self):
         md = "```sql\nSELECT 1\n```"
-        xhtml = Document.from_markdown(md).to_xhtml()
+        xhtml = markdown_to_xhtml(md)
         self.assertIn('ac:name="code"', xhtml)
         self.assertIn('ac:name="language"', xhtml)
         self.assertIn("SELECT 1", xhtml)

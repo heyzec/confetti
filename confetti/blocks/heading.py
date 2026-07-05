@@ -4,17 +4,15 @@ import xml.etree.ElementTree as ET
 from dataclasses import dataclass
 from typing import override
 
-from ..helpers import (
-    _ATX_HEADING,
+from ..markdown import encode_inline_xml
+from ..markdown.constants import ATX_HEADING, SETEXT_DASH, SETEXT_EQ
+from ..xhtml import (
     _HEADING_TAGS,
-    _SETEXT_DASH,
-    _SETEXT_EQ,
-    _collect_inline,
-    _encode_inline_xml,
-    _inline_is_simple,
-    _is_macro,
-    _local,
-    _normalize,
+    collect_inline,
+    inline_is_simple,
+    is_local,
+    is_macro,
+    normalize,
     render_for_markdown,
     render_for_xhtml,
 )
@@ -29,32 +27,32 @@ class Heading(Block):
     @classmethod
     def from_xhtml(cls, element: ET.Element) -> Heading | None:
 
-        if _is_macro(element.tag):
+        if is_macro(element.tag):
             return None
-        local = _local(element.tag)
+        local = is_local(element.tag)
         if local not in _HEADING_TAGS:
             return None
-        if element.attrib or not _inline_is_simple(element):
+        if element.attrib or not inline_is_simple(element):
             return None
-        text = _normalize(_collect_inline(element))
+        text = normalize(collect_inline(element))
         return cls(level=int(local[1]), text=text) if text else None
 
     @classmethod
     def from_markdown(cls, lines: list[str], i: int) -> tuple[Heading, int] | None:
         line = lines[i]
-        m = _ATX_HEADING.match(line)
+        m = ATX_HEADING.match(line)
         if m:
             return (
-                cls(level=len(m.group(1)), text=_encode_inline_xml(m.group(2).strip())),
+                cls(level=len(m.group(1)), text=encode_inline_xml(m.group(2).strip())),
                 i + 1,
             )
         stripped = line.strip()
         if stripped and i + 1 < len(lines):
             nxt = lines[i + 1].strip()
-            if _SETEXT_EQ.match(nxt):
-                return cls(level=1, text=_encode_inline_xml(stripped)), i + 2
-            if _SETEXT_DASH.match(nxt):
-                return cls(level=2, text=_encode_inline_xml(stripped)), i + 2
+            if SETEXT_EQ.match(nxt):
+                return cls(level=1, text=encode_inline_xml(stripped)), i + 2
+            if SETEXT_DASH.match(nxt):
+                return cls(level=2, text=encode_inline_xml(stripped)), i + 2
         return None
 
     @override

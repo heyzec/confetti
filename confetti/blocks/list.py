@@ -5,11 +5,11 @@ import xml.etree.ElementTree as ET
 from dataclasses import dataclass
 from typing import override
 
-from ..helpers import (
-    _collect_inline,
-    _inline_is_simple,
-    _is_macro,
-    _local,
+from ..xhtml import (
+    collect_inline,
+    is_macro,
+    is_local,
+    inline_is_simple,
     render_for_xhtml,
 )
 from .block import Block
@@ -26,17 +26,17 @@ class List(Block):
     @classmethod
     def from_xhtml(cls, element: ET.Element) -> List | None:
 
-        local = _local(element.tag)
-        if local not in ("ul", "ol") or _is_macro(element.tag):
+        local = is_local(element.tag)
+        if local not in ("ul", "ol") or is_macro(element.tag):
             return None
 
         items: list[str] = []
         for child in element:
-            if _local(child.tag) != "li":
+            if is_local(child.tag) != "li":
                 return None
-            if not _inline_is_simple(child):
+            if not inline_is_simple(child):
                 return None
-            items.append(_collect_inline(child))
+            items.append(collect_inline(child))
 
         return cls(tag=local, items=items)
 

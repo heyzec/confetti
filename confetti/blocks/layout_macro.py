@@ -4,14 +4,13 @@ import xml.etree.ElementTree as ET
 from dataclasses import dataclass
 from typing import override
 
-from ..helpers import (
-    _AC_NS,
+from ..constants import AC_NS
+from ..xhtml import (
     _blocks_from_elements,
     _et_tag_to_qname,
-    _is_macro,
-    _local,
+    is_macro,
+    is_local,
     _serialize_open_tag,
-    md_blocks_from_lines,
 )
 from .block import Block
 
@@ -40,17 +39,17 @@ class LayoutMacro(Block):
     @classmethod
     def from_xhtml(cls, element: ET.Element) -> LayoutMacro | None:
 
-        if not _is_macro(element.tag):
+        if not is_macro(element.tag):
             return None
-        if _local(element.tag) != "structured-macro":
+        if is_local(element.tag) != "structured-macro":
             return None
-        if element.get(f"{{{_AC_NS}}}name", "") != "numberedheadings":
+        if element.get(f"{{{AC_NS}}}name", "") != "numberedheadings":
             return None
         open_xml = _serialize_open_tag(element)
         close_xml = f"</{_et_tag_to_qname(element.tag)}>"
         inner_blocks: list[Block] = []
         for child in element:
-            if _local(child.tag) == "rich-text-body":
+            if is_local(child.tag) == "rich-text-body":
                 open_xml += _serialize_open_tag(child)
                 close_xml = f"</{_et_tag_to_qname(child.tag)}>" + close_xml
                 inner_blocks.extend(_blocks_from_elements(list(child)))
@@ -84,6 +83,7 @@ class LayoutMacro(Block):
         i += 1  # skip '-->'
         close_xml = "\n".join(close_lines)
 
+        from ..convert import md_blocks_from_lines
         inner_blocks = md_blocks_from_lines(inner_lines)
         return cls(open_xml=open_xml, close_xml=close_xml, blocks=inner_blocks), i
 

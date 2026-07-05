@@ -5,14 +5,9 @@ import xml.etree.ElementTree as ET
 from dataclasses import dataclass, field
 from typing import override
 
-from ..helpers import (
-    _is_macro,
-    _local,
-    md_parse_table,
-    render_for_markdown,
-    render_for_xhtml,
-    xhtml_parse_table,
-)
+from ..markdown import md_parse_table
+from ..xhtml import is_local, is_macro, render_for_markdown, render_for_xhtml
+from ..xhtml.table import xhtml_parse_table
 from .block import Block
 
 
@@ -31,7 +26,7 @@ class Table(Block):
 
     @classmethod
     def from_xhtml(cls, element: ET.Element) -> Table | None:
-        if _is_macro(element.tag) or _local(element.tag) != "table":
+        if is_macro(element.tag) or is_local(element.tag) != "table":
             return None
         return xhtml_parse_table(element)
 

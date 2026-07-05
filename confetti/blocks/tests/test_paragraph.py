@@ -1,7 +1,7 @@
 import unittest
 
 from confetti import xhtml_to_markdown
-from confetti.document import Document
+from confetti.convert import markdown_to_xhtml
 
 
 # Tests corresponding to "Paragraphs", "Emphasis", "Links", "Strikethrough",
@@ -15,7 +15,7 @@ class TestInlineExamples(unittest.TestCase):
             "I really like using Markdown.",
         )
         self.assertEqual(
-            Document.from_markdown("I really like using Markdown.").to_xhtml(),
+            markdown_to_xhtml("I really like using Markdown."),
             "<p>I really like using Markdown.</p>",
         )
 
@@ -27,7 +27,7 @@ class TestInlineExamples(unittest.TestCase):
             "I just love **bold text**.",
         )
         self.assertEqual(
-            Document.from_markdown("I just love **bold text**.").to_xhtml(),
+            markdown_to_xhtml("I just love **bold text**."),
             "<p>I just love <strong>bold text</strong>.</p>",
         )
 
@@ -39,25 +39,25 @@ class TestInlineExamples(unittest.TestCase):
             "Italicized text is the *cat's meow*.",
         )
         self.assertEqual(
-            Document.from_markdown("Italicized text is the *cat's meow*.").to_xhtml(),
+            markdown_to_xhtml("Italicized text is the *cat's meow*."),
             "<p>Italicized text is the <em>cat's meow</em>.</p>",
         )
 
     def test_bold_underscore(self):
         self.assertEqual(
-            Document.from_markdown("I just love __bold text__.").to_xhtml(),
+            markdown_to_xhtml("I just love __bold text__."),
             "<p>I just love <strong>bold text</strong>.</p>",
         )
 
     def test_italic_underscore(self):
         self.assertEqual(
-            Document.from_markdown("Italicized text is the _cat's meow_.").to_xhtml(),
+            markdown_to_xhtml("Italicized text is the _cat's meow_."),
             "<p>Italicized text is the <em>cat's meow</em>.</p>",
         )
 
     def test_bold_italic_underscore(self):
         self.assertEqual(
-            Document.from_markdown("This is ___really important___.").to_xhtml(),
+            markdown_to_xhtml("This is ___really important___."),
             "<p>This is <em><strong>really important</strong></em>.</p>",
         )
 
@@ -71,9 +71,9 @@ class TestInlineExamples(unittest.TestCase):
             "~~The world is flat.~~ We now know that the world is round.",
         )
         self.assertEqual(
-            Document.from_markdown(
+            markdown_to_xhtml(
                 "~~The world is flat.~~ We now know that the world is round."
-            ).to_xhtml(),
+            ),
             "<p><s>The world is flat.</s> We now know that the world is round.</p>",
         )
 
@@ -85,7 +85,7 @@ class TestInlineExamples(unittest.TestCase):
             "At the command prompt, type `nano`.",
         )
         self.assertEqual(
-            Document.from_markdown("At the command prompt, type `nano`.").to_xhtml(),
+            markdown_to_xhtml("At the command prompt, type `nano`."),
             "<p>At the command prompt, type <code>nano</code>.</p>",
         )
 
@@ -99,9 +99,9 @@ class TestInlineExamples(unittest.TestCase):
             "My favorite search engine is [Duck Duck Go](https://duckduckgo.com).",
         )
         self.assertEqual(
-            Document.from_markdown(
+            markdown_to_xhtml(
                 "My favorite search engine is [Duck Duck Go](https://duckduckgo.com)."
-            ).to_xhtml(),
+            ),
             '<p>My favorite search engine is <a href="https://duckduckgo.com">Duck Duck Go</a>.</p>',
         )
 
@@ -214,7 +214,7 @@ class TestParagraphs(unittest.TestCase):
 
     def test_emoji_to_time(self):
         self.assertEqual(
-            Document.from_markdown("📅 2026-04-28").to_xhtml(),
+            markdown_to_xhtml("📅 2026-04-28"),
             '<p><time datetime="2026-04-28" /></p>',
         )
 
@@ -222,7 +222,7 @@ class TestParagraphs(unittest.TestCase):
         md = xhtml_to_markdown('<p>Due: <time datetime="2025-12-31" /></p>')
         self.assertEqual(md, "Due: 📅 2025-12-31")
         self.assertEqual(
-            Document.from_markdown(md).to_xhtml(),
+            markdown_to_xhtml(md),
             '<p>Due: <time datetime="2025-12-31" /></p>',
         )
 
