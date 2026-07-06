@@ -70,15 +70,15 @@ class TestMarkdownToIR(unittest.TestCase):
         self.assertEqual(len(doc.blocks), 1)
         b = doc.blocks[0]
         assert isinstance(b, Table)
-        self.assertEqual(b.headers, ["Col1", "Col2"])
-        self.assertEqual(b.rows, [["a", "b"]])
+        self.assertEqual(b.cells[0], ["Col1", "Col2"])
+        self.assertEqual(b.cells[1], ["a", "b"])
 
     def test_table_with_aligned_separator(self):
         md = "| A | B |\n| :--- | ---: |\n| 1 | 2 |"
         doc = parse_markdown(md)
         b = doc.blocks[0]
         assert isinstance(b, Table)
-        self.assertEqual(b.headers, ["A", "B"])
+        self.assertEqual(b.cells[0], ["A", "B"])
 
     def test_mixed_blocks(self):
         md = "# Heading\n\nParagraph.\n\n## Sub\n\nMore."
@@ -109,13 +109,13 @@ class TestIRToXHTML(unittest.TestCase):
         self.assertIn("&gt;", xhtml)
 
     def test_table(self):
-        doc = Document(blocks=[Table(headers=["A", "B"], rows=[["1", "2"]])])
+        doc = Document(blocks=[Table(cells=[["A", "B"], ["1", "2"]])])
         xhtml = render_xhtml(doc)
         self.assertIn("<table>", xhtml)
-        self.assertIn("<th>A</th>", xhtml)
-        self.assertIn("<th>B</th>", xhtml)
-        self.assertIn("<td>1</td>", xhtml)
-        self.assertIn("<td>2</td>", xhtml)
+        self.assertIn("<th>A<br /></th>", xhtml)
+        self.assertIn("<th>B<br /></th>", xhtml)
+        self.assertIn("<td>1<br /></td>", xhtml)
+        self.assertIn("<td>2<br /></td>", xhtml)
         self.assertIn("</table>", xhtml)
 
 
@@ -138,8 +138,8 @@ class TestMarkdownToXHTML(unittest.TestCase):
         md = "| A | B |\n|---|---|\n| 1 | 2 |"
         xhtml = markdown_to_xhtml(md)
         self.assertIn("<table>", xhtml)
-        self.assertIn("<th>A</th>", xhtml)
-        self.assertIn("<td>1</td>", xhtml)
+        self.assertIn("<th>A<br /></th>", xhtml)
+        self.assertIn("<td>1<br /></td>", xhtml)
 
     def test_html_escaping_in_output(self):
         xhtml = markdown_to_xhtml("a < b")
@@ -195,10 +195,10 @@ class TestRoundTrip(unittest.TestCase):
         </table>
         """
         result = self._roundtrip(xhtml)
-        self.assertIn("<th>Name</th>", result)
-        self.assertIn("<th>Score</th>", result)
-        self.assertIn("<td>Alice</td>", result)
-        self.assertIn("<td>95</td>", result)
+        self.assertIn("<th>Name<br /></th>", result)
+        self.assertIn("<th>Score<br /></th>", result)
+        self.assertIn("<td>Alice<br /></td>", result)
+        self.assertIn("<td>95<br /></td>", result)
 
     def test_mixed_document_structure(self):
         xhtml = """
@@ -213,7 +213,8 @@ class TestRoundTrip(unittest.TestCase):
         md = xhtml_to_markdown(xhtml)
         self.assertIn("# Title", md)
         self.assertIn("## Section", md)
-        self.assertIn("| A | B |", md)
+        self.assertIn("| A", md)
+        self.assertIn("| B", md)
 
         result = self._roundtrip(xhtml)
         self.assertIn("<h1>", result)

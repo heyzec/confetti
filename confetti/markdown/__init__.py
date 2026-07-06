@@ -57,25 +57,3 @@ def encode_inline_xml(text: str) -> str:
     return "".join(result)
 
 
-def _md_is_sep_row(line: str) -> bool:
-    s = line.strip()
-    return bool(s) and "-" in s and all(c in "|-: \t" for c in s)
-
-
-def _md_parse_row(line: str) -> list[str]:
-    _WS = " \t\n\r\f\v"
-    return [encode_inline_xml(c.strip(_WS)) for c in line.strip().strip("|").split("|")]
-
-
-def md_parse_table(lines: list[str]) -> "Table | None":
-    from ..blocks import Table
-
-    sep_idx: int | None = next(
-        (i for i, ln in enumerate(lines) if _md_is_sep_row(ln)), None
-    )
-    if sep_idx is None or sep_idx == 0:
-        return None
-    headers = _md_parse_row(lines[sep_idx - 1])
-    rows = [_md_parse_row(ln) for ln in lines[sep_idx + 1 :] if ln.strip()]
-
-    return Table(headers=headers, rows=rows)

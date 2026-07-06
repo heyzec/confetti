@@ -5,7 +5,7 @@ from .layout_macro import LayoutMacro
 from .list import List
 from .paragraph import Paragraph
 from .raw_block import RawBlock
-from .table import Table
+from .table import Merge, Table
 from .task_list import TaskList
 
 __all__ = [
@@ -14,6 +14,7 @@ __all__ = [
     "Heading",
     "LayoutMacro",
     "List",
+    "Merge",
     "Paragraph",
     "RawBlock",
     "Table",

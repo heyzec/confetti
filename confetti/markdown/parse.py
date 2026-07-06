@@ -10,10 +10,11 @@ from confetti.blocks import (
     List,
     Paragraph,
     RawBlock,
-    Table,
     TaskList,
 )
 from confetti.document import Document
+
+from .table import parse_table
 
 # List specific constant required by parse_paragraph
 _UL_ITEM = re.compile(r"^[-*]\s+(.+)")
@@ -164,37 +165,6 @@ def parse_heading(lines: list[str], i: int) -> tuple[Heading, int] | None:
         if SETEXT_DASH.match(nxt):
             return Heading(level=2, text=encode_inline_xml(stripped)), i + 2
     return None
-
-
-def parse_table(lines: list[str], i: int) -> tuple[Table, int] | None:
-    from . import md_parse_table
-
-    line = lines[i].strip()
-
-    meta: str | None = None
-    if line.startswith("<!-- confetti:table ") and line.endswith(" -->"):
-        meta = line[len("<!-- confetti:table ") : -len(" -->")]
-        try:
-            json.loads(meta)
-        except json.JSONDecodeError:
-            return None
-        i += 1
-        while i < len(lines) and not lines[i].strip():
-            i += 1
-        if i >= len(lines) or "|" not in lines[i]:
-            return None
-    elif "|" not in line:
-        return None
-
-    table_lines: list[str] = []
-    while i < len(lines) and "|" in lines[i]:
-        table_lines.append(lines[i])
-        i += 1
-
-    parsed = md_parse_table(table_lines)
-    if parsed is None:
-        return None
-    return Table(headers=parsed.headers, rows=parsed.rows, meta=meta), i
 
 
 def parse_paragraph(lines: list[str], i: int) -> tuple[Paragraph, int] | None:
