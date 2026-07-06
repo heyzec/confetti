@@ -5,88 +5,60 @@ import unittest
 from confetti.blocks import Table
 from confetti.convert import (
     markdown_to_xhtml,
+    parse_markdown,
     parse_xhtml,
     render_xhtml,
     xhtml_to_markdown,
 )
 
 
-# Tests corresponding to "Tables" and "Custom Syntax: Tables with Span Markers"
-# sections of example.md
-class TestTableExamples(unittest.TestCase):
-    # --- Basic pipe table (example.md "Tables" section) ---
+class TestTableMarkdown(unittest.TestCase):
+    def test_parse_simple(self):
+        md = "| A | B |\n|---|---|\n| 1 | 2 |"
+        doc = parse_markdown(md)
+        actual = doc.blocks[0]
+        expected = Table(headers=["A", "B"], rows=[["1", "2"]])
+        self.assertEqual(actual, expected)
 
-    def test_basic_table(self):
-        # from_markdown: pipe table parses and round-trips to valid XHTML
+    def test_parse_multiple_rows(self):
+        md = "| Name | Score |\n|---|---|\n| Alice | 95 |\n| Bob | 87 |"
+        doc = parse_markdown(md)
+        actual = doc.blocks[0]
+        expected = Table(
+            headers=["Name", "Score"], rows=[["Alice", "95"], ["Bob", "87"]]
+        )
+        self.assertEqual(actual, expected)
+
+
+class TestTableXHTML(unittest.TestCase):
+    def test_table_ir_structure(self):
+        xhtml = "<table>" "<tr><th>A</th></tr>" "<tr><td>1</td></tr>" "</table>"
+        doc = parse_xhtml(xhtml)
+        actual = doc.blocks[0]
+        expected = Table(headers=["A"], rows=[["1"]])
+        self.assertEqual(actual, expected)
+
+    def test_table_ir_multiple_columns(self):
+        xhtml = (
+            "<table>"
+            "<tr><th>Name</th><th>Score</th></tr>"
+            "<tr><td>Alice</td><td>95</td></tr>"
+            "</table>"
+        )
+        doc = parse_xhtml(xhtml)
+        actual = doc.blocks[0]
+        expected = Table(headers=["Name", "Score"], rows=[["Alice", "95"]])
+        self.assertEqual(actual, expected)
+
+
+class TestTableConvert(unittest.TestCase):
+    def test_basic_table_from_markdown(self):
         md = "| Syntax | Description |\n| --- | --- |\n| Header | Title |\n| Paragraph | Text |"
         xhtml = markdown_to_xhtml(md)
         self.assertIn("<table>", xhtml)
         self.assertIn("<th>Syntax</th>", xhtml)
         self.assertIn("<td>Header</td>", xhtml)
 
-    # --- Colspan "<" marker (example.md "Tables with Span Markers") ---
-
-    def test_colspan_produces_span_marker(self):
-        # from_xhtml → to_markdown: colspan="2" cell produces "<" in the next column
-        xhtml = '<table><tr><th colspan="2">AB</th><th>C</th></tr><tr><td>D</td><td>E</td><td>F</td></tr></table>'
-        result = xhtml_to_markdown(xhtml)
-        self.assertIn("| AB | < | C |", result)
-        self.assertIn("| D | E | F |", result)
-
-    def test_colspan_roundtrip(self):
-        xhtml = '<table><tr><th colspan="2">AB</th><th>C</th></tr><tr><td>D</td><td>E</td><td>F</td></tr></table>'
-        self.assertEqual(
-            markdown_to_xhtml(xhtml_to_markdown(xhtml)),
-            render_xhtml(parse_xhtml(xhtml)),
-        )
-
-    # --- Rowspan "^" marker (example.md "Tables with Span Markers") ---
-
-    def test_rowspan_produces_span_marker(self):
-        # from_xhtml → to_markdown: rowspan="2" cell produces "^" in the row below
-        xhtml = '<table><tr><th>A</th><th>B</th></tr><tr><td rowspan="2">X</td><td>Y</td></tr><tr><td>Z</td></tr></table>'
-        result = xhtml_to_markdown(xhtml)
-        self.assertIn("| X | Y |", result)
-        self.assertIn("| ^ | Z |", result)
-
-    def test_rowspan_roundtrip(self):
-        xhtml = '<table><tr><th>A</th><th>B</th></tr><tr><td rowspan="2">X</td><td>Y</td></tr><tr><td>Z</td></tr></table>'
-        self.assertEqual(
-            markdown_to_xhtml(xhtml_to_markdown(xhtml)),
-            render_xhtml(parse_xhtml(xhtml)),
-        )
-
-    # --- Combined colspan + rowspan ---
-
-    def test_colspan_rowspan_combined_roundtrip(self):
-        xhtml = (
-            "<table>"
-            '<tr><th colspan="2">AB</th><th>C</th></tr>'
-            '<tr><td rowspan="2">X</td><td>Y</td><td>Y2</td></tr>'
-            "<tr><td>Z</td><td>Z2</td></tr>"
-            "</table>"
-        )
-        self.assertEqual(
-            markdown_to_xhtml(xhtml_to_markdown(xhtml)),
-            render_xhtml(parse_xhtml(xhtml)),
-        )
-
-    # --- Literal "<" in cell content must be escaped as "\<" ---
-
-    def test_literal_lt_escaped(self):
-        # from_xhtml → to_markdown: &lt; in cell becomes \< (not a span marker)
-        xhtml = "<table><tr><th>Key</th></tr><tr><td>&lt;</td></tr></table>"
-        md = xhtml_to_markdown(xhtml)
-        self.assertNotIn("| < |", md)
-        self.assertIn("\\<", md)
-        # full roundtrip correct
-        self.assertEqual(
-            markdown_to_xhtml(md),
-            render_xhtml(parse_xhtml(xhtml)),
-        )
-
-
-class TestTables(unittest.TestCase):
     def test_simple_th_headers(self):
         xhtml = """
         <table>
@@ -149,14 +121,6 @@ class TestTables(unittest.TestCase):
         lines = [ln for ln in result.splitlines() if ln.strip()]
         self.assertGreaterEqual(lines[2].count("|"), 4)
 
-    def test_table_ir_structure(self):
-        doc = parse_xhtml("<table><tr><th>A</th></tr><tr><td>1</td></tr></table>")
-        self.assertEqual(len(doc.blocks), 1)
-        b = doc.blocks[0]
-        assert isinstance(b, Table)
-        self.assertEqual(b.headers, ["A"])
-        self.assertEqual(b.rows, [["1"]])
-
     def test_cell_with_div_wrapper(self):
         xhtml = """
         <table>
@@ -167,50 +131,51 @@ class TestTables(unittest.TestCase):
         self.assertIn("cell text", xhtml_to_markdown(xhtml))
 
     def test_colspan_produces_span_marker(self):
-        xhtml = """
-        <table>
-          <tr><th colspan="2">AB</th><th>C</th></tr>
-          <tr><td>D</td><td>E</td><td>F</td></tr>
-        </table>
-        """
+        xhtml = '<table><tr><th colspan="2">AB</th><th>C</th></tr><tr><td>D</td><td>E</td><td>F</td></tr></table>'
         result = xhtml_to_markdown(xhtml)
         self.assertIn("| AB | < | C |", result)
         self.assertIn("| D | E | F |", result)
 
     def test_rowspan_produces_span_marker(self):
-        xhtml = """
-        <table>
-          <tr><th>A</th><th>B</th></tr>
-          <tr><td rowspan="2">X</td><td>Y</td></tr>
-          <tr><td>Z</td></tr>
-        </table>
-        """
+        xhtml = '<table><tr><th>A</th><th>B</th></tr><tr><td rowspan="2">X</td><td>Y</td></tr><tr><td>Z</td></tr></table>'
         result = xhtml_to_markdown(xhtml)
         self.assertIn("| X | Y |", result)
         self.assertIn("| ^ | Z |", result)
 
+
+class TestTableRoundtrip(unittest.TestCase):
     def test_colspan_roundtrip(self):
         xhtml = '<table><tr><th colspan="2">AB</th><th>C</th></tr><tr><td>D</td><td>E</td><td>F</td></tr></table>'
-        md = xhtml_to_markdown(xhtml)
         self.assertEqual(
-            markdown_to_xhtml(md),
+            markdown_to_xhtml(xhtml_to_markdown(xhtml)),
             render_xhtml(parse_xhtml(xhtml)),
         )
 
     def test_rowspan_roundtrip(self):
         xhtml = '<table><tr><th>A</th><th>B</th></tr><tr><td rowspan="2">X</td><td>Y</td></tr><tr><td>Z</td></tr></table>'
-        md = xhtml_to_markdown(xhtml)
         self.assertEqual(
-            markdown_to_xhtml(md),
+            markdown_to_xhtml(xhtml_to_markdown(xhtml)),
             render_xhtml(parse_xhtml(xhtml)),
         )
 
-    def test_span_marker_escaped_in_content(self):
+    def test_colspan_rowspan_combined_roundtrip(self):
+        xhtml = (
+            "<table>"
+            '<tr><th colspan="2">AB</th><th>C</th></tr>'
+            '<tr><td rowspan="2">X</td><td>Y</td><td>Y2</td></tr>'
+            "<tr><td>Z</td><td>Z2</td></tr>"
+            "</table>"
+        )
+        self.assertEqual(
+            markdown_to_xhtml(xhtml_to_markdown(xhtml)),
+            render_xhtml(parse_xhtml(xhtml)),
+        )
+
+    def test_literal_lt_escaped(self):
         xhtml = "<table><tr><th>Key</th></tr><tr><td>&lt;</td></tr></table>"
         md = xhtml_to_markdown(xhtml)
         self.assertNotIn("| < |", md)
         self.assertIn("\\<", md)
-        # Round-trip: parsed-from-markdown matches parsed-from-xhtml
         self.assertEqual(
             markdown_to_xhtml(md),
             render_xhtml(parse_xhtml(xhtml)),

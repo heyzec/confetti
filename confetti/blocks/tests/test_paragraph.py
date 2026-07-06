@@ -1,139 +1,70 @@
 import unittest
 
-from confetti import xhtml_to_markdown
-from confetti.convert import markdown_to_xhtml
+from confetti.blocks import Paragraph
+from confetti.convert import (
+    markdown_to_xhtml,
+    parse_markdown,
+    parse_xhtml,
+    xhtml_to_markdown,
+)
 
 
-# Tests corresponding to "Paragraphs", "Emphasis", "Links", "Strikethrough",
-# and "Code" sections of example.md
-class TestInlineExamples(unittest.TestCase):
-    # --- Paragraphs ---
+class TestParagraphMarkdown(unittest.TestCase):
+    def test_parse_simple(self):
+        md = "Hello world"
+        doc = parse_markdown(md)
+        self.assertEqual(len(doc.blocks), 1)
+        actual = doc.blocks[0]
+        expected = Paragraph(text="Hello world")
+        self.assertEqual(actual, expected)
 
-    def test_paragraph(self):
-        self.assertEqual(
-            xhtml_to_markdown("<p>I really like using Markdown.</p>"),
-            "I really like using Markdown.",
-        )
-        self.assertEqual(
-            markdown_to_xhtml("I really like using Markdown."),
-            "<p>I really like using Markdown.</p>",
-        )
+    def test_parse_multiline_joined(self):
+        md = "Line one\nLine two"
+        doc = parse_markdown(md)
+        self.assertEqual(len(doc.blocks), 1)
+        actual = doc.blocks[0]
+        expected = Paragraph(text="Line one Line two")
+        self.assertEqual(actual, expected)
 
-    # --- Bold ---
-
-    def test_bold(self):
-        self.assertEqual(
-            xhtml_to_markdown("<p>I just love <strong>bold text</strong>.</p>"),
-            "I just love **bold text**.",
-        )
-        self.assertEqual(
-            markdown_to_xhtml("I just love **bold text**."),
-            "<p>I just love <strong>bold text</strong>.</p>",
-        )
-
-    # --- Italic ---
-
-    def test_italic(self):
-        self.assertEqual(
-            xhtml_to_markdown("<p>Italicized text is the <em>cat's meow</em>.</p>"),
-            "Italicized text is the *cat's meow*.",
-        )
-        self.assertEqual(
-            markdown_to_xhtml("Italicized text is the *cat's meow*."),
-            "<p>Italicized text is the <em>cat's meow</em>.</p>",
-        )
-
-    def test_bold_underscore(self):
-        self.assertEqual(
-            markdown_to_xhtml("I just love __bold text__."),
-            "<p>I just love <strong>bold text</strong>.</p>",
-        )
-
-    def test_italic_underscore(self):
-        self.assertEqual(
-            markdown_to_xhtml("Italicized text is the _cat's meow_."),
-            "<p>Italicized text is the <em>cat's meow</em>.</p>",
-        )
-
-    def test_bold_italic_underscore(self):
-        self.assertEqual(
-            markdown_to_xhtml("This is ___really important___."),
-            "<p>This is <em><strong>really important</strong></em>.</p>",
-        )
-
-    # --- Strikethrough ---
-
-    def test_strikethrough(self):
-        self.assertEqual(
-            xhtml_to_markdown(
-                "<p><s>The world is flat.</s> We now know that the world is round.</p>"
-            ),
-            "~~The world is flat.~~ We now know that the world is round.",
-        )
-        self.assertEqual(
-            markdown_to_xhtml(
-                "~~The world is flat.~~ We now know that the world is round."
-            ),
-            "<p><s>The world is flat.</s> We now know that the world is round.</p>",
-        )
-
-    # --- Inline code ---
-
-    def test_inline_code(self):
-        self.assertEqual(
-            xhtml_to_markdown("<p>At the command prompt, type <code>nano</code>.</p>"),
-            "At the command prompt, type `nano`.",
-        )
-        self.assertEqual(
-            markdown_to_xhtml("At the command prompt, type `nano`."),
-            "<p>At the command prompt, type <code>nano</code>.</p>",
-        )
-
-    # --- Links ---
-
-    def test_link(self):
-        self.assertEqual(
-            xhtml_to_markdown(
-                '<p>My favorite search engine is <a href="https://duckduckgo.com">Duck Duck Go</a>.</p>'
-            ),
-            "My favorite search engine is [Duck Duck Go](https://duckduckgo.com).",
-        )
-        self.assertEqual(
-            markdown_to_xhtml(
-                "My favorite search engine is [Duck Duck Go](https://duckduckgo.com)."
-            ),
-            '<p>My favorite search engine is <a href="https://duckduckgo.com">Duck Duck Go</a>.</p>',
-        )
-
-    def test_bold_link(self):
-        # from_xhtml only: **[EFF](https://eff.org)**
-        self.assertEqual(
-            xhtml_to_markdown(
-                '<p>I love supporting the <strong><a href="https://eff.org">EFF</a></strong>.</p>'
-            ),
-            "I love supporting the **[EFF](https://eff.org)**.",
-        )
-
-    def test_italic_link(self):
-        # from_xhtml only: *[Markdown Guide](url)*
-        self.assertEqual(
-            xhtml_to_markdown(
-                '<p>This is the <em><a href="https://www.markdownguide.org">Markdown Guide</a></em>.</p>'
-            ),
-            "This is the *[Markdown Guide](https://www.markdownguide.org)*.",
-        )
-
-    def test_code_link(self):
-        # from_xhtml only: [`code`](url)
-        self.assertEqual(
-            xhtml_to_markdown(
-                '<p>See the section on <a href="##code"><code>code</code></a>.</p>'
-            ),
-            "See the section on [`code`](##code).",
-        )
+    def test_parse_two_paragraphs(self):
+        md = "Line one\n\nLine two"
+        doc = parse_markdown(md)
+        self.assertEqual(len(doc.blocks), 2)
+        actual1 = doc.blocks[0]
+        actual2 = doc.blocks[1]
+        expected1 = Paragraph(text="Line one")
+        expected2 = Paragraph(text="Line two")
+        self.assertEqual(actual1, expected1)
+        self.assertEqual(actual2, expected2)
 
 
-class TestParagraphs(unittest.TestCase):
+class TestParagraphXHTML(unittest.TestCase):
+    def test_parse_simple(self):
+        xhtml = "<p>Hello world</p>"
+        doc = parse_xhtml(xhtml)
+        self.assertEqual(len(doc.blocks), 1)
+        actual = doc.blocks[0]
+        expected = Paragraph(text="Hello world")
+        self.assertEqual(actual, expected)
+
+    def test_parse_with_bold(self):
+        xhtml = "<p>Hello <strong>bold</strong> world</p>"
+        doc = parse_xhtml(xhtml)
+        self.assertEqual(len(doc.blocks), 1)
+        actual = doc.blocks[0]
+        expected = Paragraph(text="Hello **bold** world")
+        self.assertEqual(actual, expected)
+
+    def test_parse_with_link(self):
+        xhtml = '<p>See <a href="https://example.com">link</a></p>'
+        doc = parse_xhtml(xhtml)
+        self.assertEqual(len(doc.blocks), 1)
+        actual = doc.blocks[0]
+        expected = Paragraph(text="See [link](https://example.com)")
+        self.assertEqual(actual, expected)
+
+
+class TestParagraphConvert(unittest.TestCase):
     def test_simple(self):
         self.assertEqual(xhtml_to_markdown("<p>Hello world</p>"), "Hello world")
 
@@ -204,8 +135,6 @@ class TestParagraphs(unittest.TestCase):
         self.assertIn("Hello", result)
         self.assertIn("world", result)
 
-    # --- Dates ---
-
     def test_time_to_emoji(self):
         self.assertEqual(
             xhtml_to_markdown('<p><time datetime="2026-04-28" /></p>'),
@@ -216,6 +145,118 @@ class TestParagraphs(unittest.TestCase):
         self.assertEqual(
             markdown_to_xhtml("📅 2026-04-28"),
             '<p><time datetime="2026-04-28" /></p>',
+        )
+
+    def test_bold_link(self):
+        self.assertEqual(
+            xhtml_to_markdown(
+                '<p>I love supporting the <strong><a href="https://eff.org">EFF</a></strong>.</p>'
+            ),
+            "I love supporting the **[EFF](https://eff.org)**.",
+        )
+
+    def test_italic_link(self):
+        self.assertEqual(
+            xhtml_to_markdown(
+                '<p>This is the <em><a href="https://www.markdownguide.org">Markdown Guide</a></em>.</p>'
+            ),
+            "This is the *[Markdown Guide](https://www.markdownguide.org)*.",
+        )
+
+    def test_code_link(self):
+        self.assertEqual(
+            xhtml_to_markdown(
+                '<p>See the section on <a href="##code"><code>code</code></a>.</p>'
+            ),
+            "See the section on [`code`](##code).",
+        )
+
+    def test_bold_underscore(self):
+        self.assertEqual(
+            markdown_to_xhtml("I just love __bold text__."),
+            "<p>I just love <strong>bold text</strong>.</p>",
+        )
+
+    def test_italic_underscore(self):
+        self.assertEqual(
+            markdown_to_xhtml("Italicized text is the _cat's meow_."),
+            "<p>Italicized text is the <em>cat's meow</em>.</p>",
+        )
+
+    def test_bold_italic_underscore(self):
+        self.assertEqual(
+            markdown_to_xhtml("This is ___really important___."),
+            "<p>This is <em><strong>really important</strong></em>.</p>",
+        )
+
+
+class TestParagraphRoundtrip(unittest.TestCase):
+    def test_paragraph(self):
+        self.assertEqual(
+            xhtml_to_markdown("<p>I really like using Markdown.</p>"),
+            "I really like using Markdown.",
+        )
+        self.assertEqual(
+            markdown_to_xhtml("I really like using Markdown."),
+            "<p>I really like using Markdown.</p>",
+        )
+
+    def test_bold(self):
+        self.assertEqual(
+            xhtml_to_markdown("<p>I just love <strong>bold text</strong>.</p>"),
+            "I just love **bold text**.",
+        )
+        self.assertEqual(
+            markdown_to_xhtml("I just love **bold text**."),
+            "<p>I just love <strong>bold text</strong>.</p>",
+        )
+
+    def test_italic(self):
+        self.assertEqual(
+            xhtml_to_markdown("<p>Italicized text is the <em>cat's meow</em>.</p>"),
+            "Italicized text is the *cat's meow*.",
+        )
+        self.assertEqual(
+            markdown_to_xhtml("Italicized text is the *cat's meow*."),
+            "<p>Italicized text is the <em>cat's meow</em>.</p>",
+        )
+
+    def test_strikethrough(self):
+        self.assertEqual(
+            xhtml_to_markdown(
+                "<p><s>The world is flat.</s> We now know that the world is round.</p>"
+            ),
+            "~~The world is flat.~~ We now know that the world is round.",
+        )
+        self.assertEqual(
+            markdown_to_xhtml(
+                "~~The world is flat.~~ We now know that the world is round."
+            ),
+            "<p><s>The world is flat.</s> We now know that the world is round.</p>",
+        )
+
+    def test_inline_code(self):
+        self.assertEqual(
+            xhtml_to_markdown("<p>At the command prompt, type <code>nano</code>.</p>"),
+            "At the command prompt, type `nano`.",
+        )
+        self.assertEqual(
+            markdown_to_xhtml("At the command prompt, type `nano`."),
+            "<p>At the command prompt, type <code>nano</code>.</p>",
+        )
+
+    def test_link(self):
+        self.assertEqual(
+            xhtml_to_markdown(
+                '<p>My favorite search engine is <a href="https://duckduckgo.com">Duck Duck Go</a>.</p>'
+            ),
+            "My favorite search engine is [Duck Duck Go](https://duckduckgo.com).",
+        )
+        self.assertEqual(
+            markdown_to_xhtml(
+                "My favorite search engine is [Duck Duck Go](https://duckduckgo.com)."
+            ),
+            '<p>My favorite search engine is <a href="https://duckduckgo.com">Duck Duck Go</a>.</p>',
         )
 
     def test_time_roundtrip(self):

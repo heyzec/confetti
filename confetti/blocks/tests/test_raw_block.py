@@ -4,12 +4,16 @@ from confetti.blocks import RawBlock
 from confetti.convert import markdown_to_xhtml, parse_xhtml, xhtml_to_markdown
 
 
-class TestRawBlock(unittest.TestCase):
-    def test_complex_list_preserved_as_raw(self):
+class TestRawBlockXHTML(unittest.TestCase):
+    def test_parse_complex_list_preserved_as_raw(self):
         xhtml = "<ul><li><p>a</p><p>b</p></li></ul>"
         doc = parse_xhtml(xhtml)
-        self.assertIsInstance(doc.blocks[0], RawBlock)
+        actual = doc.blocks[0]
+        expected = RawBlock(xml=xhtml)
+        self.assertEqual(actual, expected)
 
+
+class TestRawBlockRoundtrip(unittest.TestCase):
     def test_roundtrip_via_confetti_raw(self):
         xhtml = "<ul><li><p>a</p><p>b</p></li></ul>"
         md = xhtml_to_markdown(xhtml)

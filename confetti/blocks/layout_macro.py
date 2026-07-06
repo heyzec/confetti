@@ -7,10 +7,10 @@ from typing import override
 from ..constants import AC_NS
 from ..xhtml import (
     _blocks_from_elements,
-    _et_tag_to_qname,
-    is_macro,
+    et_tag_to_qname,
     is_local,
-    _serialize_open_tag,
+    is_macro,
+    serialize_open_tag,
 )
 from .block import Block
 
@@ -45,13 +45,13 @@ class LayoutMacro(Block):
             return None
         if element.get(f"{{{AC_NS}}}name", "") != "numberedheadings":
             return None
-        open_xml = _serialize_open_tag(element)
-        close_xml = f"</{_et_tag_to_qname(element.tag)}>"
+        open_xml = serialize_open_tag(element)
+        close_xml = f"</{et_tag_to_qname(element.tag)}>"
         inner_blocks: list[Block] = []
         for child in element:
             if is_local(child.tag) == "rich-text-body":
-                open_xml += _serialize_open_tag(child)
-                close_xml = f"</{_et_tag_to_qname(child.tag)}>" + close_xml
+                open_xml += serialize_open_tag(child)
+                close_xml = f"</{et_tag_to_qname(child.tag)}>" + close_xml
                 inner_blocks.extend(_blocks_from_elements(list(child)))
             else:
                 inner_blocks.extend(_blocks_from_elements([child]))
@@ -84,6 +84,7 @@ class LayoutMacro(Block):
         close_xml = "\n".join(close_lines)
 
         from ..convert import md_blocks_from_lines
+
         inner_blocks = md_blocks_from_lines(inner_lines)
         return cls(open_xml=open_xml, close_xml=close_xml, blocks=inner_blocks), i
 
