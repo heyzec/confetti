@@ -77,34 +77,9 @@ class TaskList(Block):
 
         return cls(tasks=tasks)
 
-    @classmethod
-    def from_markdown(cls, lines: list[str], i: int) -> tuple[TaskList, int] | None:
-        _TASK_GFM = re.compile(r"^[-*]\s+\[([ x])\]\s*(.*)")
-        _CONTINUATION = re.compile(r"^ {2,}(.+)")
-
-        if not _TASK_GFM.match(lines[i]):
-            return None
-
-        tasks: list[tuple[int, str, str]] = []
-        auto_id = 1
-        while i < len(lines):
-            m = _TASK_GFM.match(lines[i])
-            if not m:
-                break
-            check, body = m.group(1), m.group(2).strip()
-            i += 1
-            cont: list[str] = []
-            while i < len(lines) and _CONTINUATION.match(lines[i]):
-                cont.append(_CONTINUATION.match(lines[i]).group(1))  # type: ignore[union-attr]
-                i += 1
-            if cont:
-                body = (body + "\n" if body else "") + "\n".join(cont)
-            status = "incomplete" if check == " " else "complete"
-            tasks.append((auto_id, status, body))
-            auto_id += 1
-        if not tasks:
-            return None
-        return cls(tasks=tasks), i
+    # @classmethod
+    # def from_markdown(cls, lines: list[str], i: int) -> tuple[TaskList, int] | None:
+    #     ...
 
     @override
     def to_markdown(self) -> str:

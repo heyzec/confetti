@@ -5,7 +5,6 @@ import xml.etree.ElementTree as ET
 from dataclasses import dataclass, field
 from typing import override
 
-from ..markdown import md_parse_table
 from ..xhtml import is_local, is_macro, render_for_markdown, render_for_xhtml
 from ..xhtml.table import xhtml_parse_table
 from .block import Block
@@ -30,34 +29,9 @@ class Table(Block):
             return None
         return xhtml_parse_table(element)
 
-    @classmethod
-    def from_markdown(cls, lines: list[str], i: int) -> tuple[Table, int] | None:
-        line = lines[i].strip()
-
-        meta: str | None = None
-        if line.startswith("<!-- confetti:table ") and line.endswith(" -->"):
-            meta = line[len("<!-- confetti:table ") : -len(" -->")]
-            try:
-                json.loads(meta)
-            except json.JSONDecodeError:
-                return None
-            i += 1
-            while i < len(lines) and not lines[i].strip():
-                i += 1
-            if i >= len(lines) or "|" not in lines[i]:
-                return None
-        elif "|" not in line:
-            return None
-
-        table_lines: list[str] = []
-        while i < len(lines) and "|" in lines[i]:
-            table_lines.append(lines[i])
-            i += 1
-
-        parsed = md_parse_table(table_lines)
-        if parsed is None:
-            return None
-        return cls(headers=parsed.headers, rows=parsed.rows, meta=meta), i
+    # @classmethod
+    # def from_markdown(cls, lines: list[str], i: int) -> tuple[Table, int] | None:
+    #     ...
 
     def _pipe_table(self) -> str:
         ncols = max(len(self.headers), max((len(r) for r in self.rows), default=0))

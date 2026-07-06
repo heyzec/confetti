@@ -38,7 +38,6 @@ class LayoutMacro(Block):
 
     @classmethod
     def from_xhtml(cls, element: ET.Element) -> LayoutMacro | None:
-
         if not is_macro(element.tag):
             return None
         if is_local(element.tag) != "structured-macro":
@@ -57,36 +56,9 @@ class LayoutMacro(Block):
                 inner_blocks.extend(_blocks_from_elements([child]))
         return cls(open_xml=open_xml, close_xml=close_xml, blocks=inner_blocks)
 
-    @classmethod
-    def from_markdown(cls, lines: list[str], i: int) -> tuple[LayoutMacro, int] | None:
-
-        if lines[i].strip() != "<!-- confetti:layout-open":
-            return None
-        open_lines: list[str] = []
-        i += 1
-        while i < len(lines) and lines[i].rstrip() != "-->":
-            open_lines.append(lines[i])
-            i += 1
-        i += 1  # skip '-->'
-        open_xml = "\n".join(open_lines)
-
-        inner_lines: list[str] = []
-        while i < len(lines) and lines[i].strip() != "<!-- confetti:layout-close":
-            inner_lines.append(lines[i])
-            i += 1
-        i += 1  # skip '<!-- confetti:layout-close'
-
-        close_lines: list[str] = []
-        while i < len(lines) and lines[i].rstrip() != "-->":
-            close_lines.append(lines[i])
-            i += 1
-        i += 1  # skip '-->'
-        close_xml = "\n".join(close_lines)
-
-        from ..convert import md_blocks_from_lines
-
-        inner_blocks = md_blocks_from_lines(inner_lines)
-        return cls(open_xml=open_xml, close_xml=close_xml, blocks=inner_blocks), i
+    # @classmethod
+    # def from_markdown(cls, lines: list[str], i: int) -> tuple[LayoutMacro, int] | None:
+    #     ...
 
     @override
     def to_markdown(self) -> str:

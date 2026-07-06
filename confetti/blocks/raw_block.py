@@ -48,17 +48,9 @@ class RawBlock(Block):
 
         return None
 
-    @classmethod
-    def from_markdown(cls, lines: list[str], i: int) -> tuple[RawBlock, int] | None:
-        if lines[i].strip() != "<!-- confetti:raw":
-            return None
-        xml_lines: list[str] = []
-        i += 1
-        while i < len(lines) and lines[i].rstrip() != "-->":
-            xml_lines.append(lines[i])
-            i += 1
-        i += 1  # skip '-->'
-        return cls(xml="\n".join(xml_lines)), i
+    # @classmethod
+    # def from_markdown(cls, lines: list[str], i: int) -> tuple[RawBlock, int] | None:
+    #     ...
 
     @override
     def to_markdown(self) -> str:

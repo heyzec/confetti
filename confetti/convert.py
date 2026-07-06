@@ -4,55 +4,8 @@ import xml.etree.ElementTree as ET
 
 from .constants import AC_NS, RI_NS
 from .document import Document
+from .markdown.parse import parse_markdown
 from .xhtml import _blocks_from_elements, replace_html_entities
-
-
-# To deprecate
-def md_blocks_from_lines(lines: list[str]) -> list:
-    from confetti.blocks import (
-        CodeBlock,
-        Heading,
-        LayoutMacro,
-        List,
-        Paragraph,
-        RawBlock,
-        Table,
-        TaskList,
-    )
-
-    _MD_BLOCK_TYPES = [
-        LayoutMacro,
-        CodeBlock,
-        TaskList,
-        RawBlock,
-        List,
-        Heading,
-        Table,
-        Paragraph,
-    ]
-
-    blocks = []
-    i = 0
-    while i < len(lines):
-        if not lines[i].strip():
-            i += 1
-            continue
-        for block_cls in _MD_BLOCK_TYPES:
-            result = block_cls.from_markdown(lines, i)
-            if result is not None:
-                block, i = result
-                blocks.append(block)
-                break
-        else:
-            i += 1
-
-    return blocks
-
-
-def parse_markdown(markdown: str) -> Document:
-    lines = markdown.splitlines()
-    blocks = md_blocks_from_lines(lines)
-    return Document(blocks=blocks)
 
 
 def render_markdown(doc: Document) -> str:

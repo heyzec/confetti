@@ -4,8 +4,6 @@ import xml.etree.ElementTree as ET
 from dataclasses import dataclass
 from typing import override
 
-from ..markdown import encode_inline_xml
-from ..markdown.constants import ATX_HEADING, SETEXT_DASH, SETEXT_EQ
 from ..xhtml import (
     _HEADING_TAGS,
     collect_inline,
@@ -37,23 +35,9 @@ class Heading(Block):
         text = normalize(collect_inline(element))
         return cls(level=int(local[1]), text=text) if text else None
 
-    @classmethod
-    def from_markdown(cls, lines: list[str], i: int) -> tuple[Heading, int] | None:
-        line = lines[i]
-        m = ATX_HEADING.match(line)
-        if m:
-            return (
-                cls(level=len(m.group(1)), text=encode_inline_xml(m.group(2).strip())),
-                i + 1,
-            )
-        stripped = line.strip()
-        if stripped and i + 1 < len(lines):
-            nxt = lines[i + 1].strip()
-            if SETEXT_EQ.match(nxt):
-                return cls(level=1, text=encode_inline_xml(stripped)), i + 2
-            if SETEXT_DASH.match(nxt):
-                return cls(level=2, text=encode_inline_xml(stripped)), i + 2
-        return None
+    # @classmethod
+    # def from_markdown(cls, lines: list[str], i: int) -> tuple[Heading, int] | None:
+    #     ...
 
     @override
     def to_markdown(self) -> str:

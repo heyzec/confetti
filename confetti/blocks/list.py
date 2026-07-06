@@ -1,21 +1,17 @@
 from __future__ import annotations
 
-import re
 import xml.etree.ElementTree as ET
 from dataclasses import dataclass
 from typing import override
 
 from ..xhtml import (
     collect_inline,
-    is_macro,
-    is_local,
     inline_is_simple,
+    is_local,
+    is_macro,
     render_for_xhtml,
 )
 from .block import Block
-
-_UL_ITEM = re.compile(r"^[-*]\s+(.+)")
-_OL_ITEM = re.compile(r"^\d+\.\s+(.+)")
 
 
 @dataclass
@@ -40,25 +36,9 @@ class List(Block):
 
         return cls(tag=local, items=items)
 
-    @classmethod
-    def from_markdown(cls, lines: list[str], i: int) -> tuple[List, int] | None:
-        ul_m = _UL_ITEM.match(lines[i])
-        ol_m = _OL_ITEM.match(lines[i])
-        pat, tag = (
-            (_UL_ITEM, "ul") if ul_m else (_OL_ITEM, "ol") if ol_m else (None, "")
-        )
-        if not pat:
-            return None
-
-        items: list[str] = []
-        while i < len(lines):
-            m = pat.match(lines[i])
-            if not m:
-                break
-            items.append(m.group(1))
-            i += 1
-
-        return cls(tag=tag, items=items), i
+    # @classmethod
+    # def from_markdown(cls, lines: list[str], i: int) -> tuple[List, int] | None:
+    #     ...
 
     @override
     def to_markdown(self) -> str:
