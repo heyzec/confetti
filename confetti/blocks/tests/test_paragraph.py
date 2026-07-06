@@ -64,6 +64,25 @@ class TestParagraphXHTML(unittest.TestCase):
         self.assertEqual(actual, expected)
 
 
+class TestParagraphEquivalence(unittest.TestCase):
+    def _check_equivalence(self, md: str, xhtml: str):
+        self.assertEqual(md, xhtml_to_markdown(xhtml))
+        self.assertEqual(xhtml, markdown_to_xhtml(md))
+
+    def test_escape_underscore(self):
+        self._check_equivalence("foo\\_bar", "<p>foo_bar</p>")
+
+    def test_escape_backslash(self):
+        self._check_equivalence("C:\\\\path\\\\file", "<p>C:\\path\\file</p>")
+
+    def test_escape_underscore_in_url(self):
+        # Check that underscores in URLs are not escaped, since they are valid in URLs.
+        self._check_equivalence(
+            "[label](https://example.com/foo_bar)",
+            '<p><a href="https://example.com/foo_bar">label</a></p>',
+        )
+
+
 class TestParagraphConvert(unittest.TestCase):
     def test_simple(self):
         self.assertEqual(xhtml_to_markdown("<p>Hello world</p>"), "Hello world")

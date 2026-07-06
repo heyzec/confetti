@@ -5,6 +5,7 @@ import re
 import xml.etree.ElementTree as ET
 
 from ..constants import AC_NS, MACRO_NS, RAW_CLOSE, RAW_OPEN, RI_NS, SENTINEL_RE
+from ..markdown import escape_md_text
 
 # ===========================================================================
 # Namespace / XML constants
@@ -295,15 +296,15 @@ def collect_inline(element: ET.Element) -> str:
     """Collect all inline-Markdown text from within an element."""
     parts: list[str] = []
     if element.text:
-        parts.append((element.text))
+        # Escape plain text nodes only — not the markdown produced by _inline_text,
+        # which may contain backtick code or link URLs where _ must not be escaped.
+        parts.append(escape_md_text(element.text))
     for child in element:
         parts.append(_inline_text(child))
         if child.tail:
-            parts.append((child.tail))
+            parts.append(escape_md_text(child.tail))  # tail is plain text, same rule
 
-    output = "".join(parts)
-    # _ = escape_md_text(output)  # turn out this isn't covered in tests
-    return output
+    return "".join(parts)
 
 
 # ===========================================================================
