@@ -14,6 +14,8 @@ from confetti.blocks import (
 )
 from confetti.document import Document
 
+from . import encode_inline_xml
+from .constants import ATX_HEADING, SETEXT_DASH, SETEXT_EQ
 from .table import parse_table
 
 # List specific constant required by parse_paragraph
@@ -21,7 +23,7 @@ _UL_ITEM = re.compile(r"^[-*]\s+(.+)")
 _OL_ITEM = re.compile(r"^\d+\.\s+(.+)")
 
 
-def parse_layout_macro(lines: list[str], i: int) -> "tuple[LayoutMacro, int] | None":
+def parse_layout_macro(lines: list[str], i: int) -> tuple[LayoutMacro, int] | None:
     if lines[i].strip() != "<!-- confetti:layout-open":
         return None
     open_lines: list[str] = []
@@ -49,7 +51,7 @@ def parse_layout_macro(lines: list[str], i: int) -> "tuple[LayoutMacro, int] | N
     return LayoutMacro(open_xml=open_xml, close_xml=close_xml, blocks=inner_blocks), i
 
 
-def parse_code_block(lines: list[str], i: int) -> "tuple[CodeBlock, int] | None":
+def parse_code_block(lines: list[str], i: int) -> tuple[CodeBlock, int] | None:
     line = lines[i].strip()
 
     if line.startswith("<!-- confetti:code ") and line.endswith(" -->"):
@@ -147,9 +149,6 @@ def parse_list(lines: list[str], i: int) -> tuple[List, int] | None:
 
 
 def parse_heading(lines: list[str], i: int) -> tuple[Heading, int] | None:
-    from . import encode_inline_xml
-    from .constants import ATX_HEADING, SETEXT_DASH, SETEXT_EQ
-
     line = lines[i]
     m = ATX_HEADING.match(line)
     if m:
@@ -168,9 +167,6 @@ def parse_heading(lines: list[str], i: int) -> tuple[Heading, int] | None:
 
 
 def parse_paragraph(lines: list[str], i: int) -> tuple[Paragraph, int] | None:
-    from . import encode_inline_xml
-    from .constants import ATX_HEADING
-
     para_lines: list[str] = []
     while i < len(lines):
         cur_s = lines[i].strip()

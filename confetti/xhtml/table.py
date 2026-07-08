@@ -3,6 +3,8 @@ from __future__ import annotations
 import re
 import xml.etree.ElementTree as ET
 
+from confetti.blocks import Merge, Table
+
 from ..constants import RAW_OPEN
 from . import (
     _BLOCK_CONTENT_TAGS,
@@ -13,6 +15,7 @@ from . import (
     is_local,
     is_macro,
     normalize,
+    render_for_xhtml,
 )
 
 
@@ -46,7 +49,7 @@ def _cell_content(cell_el: ET.Element) -> str | None:
     return normalize(raw_inline)
 
 
-def xhtml_parse_table(element: ET.Element) -> "Table | None":
+def xhtml_parse_table(element: ET.Element) -> Table | None:
     """Parse a <table> element into the Table IR.
 
     Cells covered by a merge are stored as None in the 2D grid; the merges
@@ -137,8 +140,6 @@ def xhtml_parse_table(element: ET.Element) -> "Table | None":
             m = re.search(r"width:\s*([\d.]+)px", style)
             col_widths.append(float(m.group(1)) if m else None)
 
-    from confetti.blocks import Merge, Table
-
     return Table(
         cells=cells_2d,
         merges=[
@@ -150,13 +151,11 @@ def xhtml_parse_table(element: ET.Element) -> "Table | None":
 
 
 def render_table_xhtml(table: "Table") -> str:
-    from . import render_for_xhtml
-
     if not table.cells:
         return "<table></table>"
 
     occupied: set[tuple[int, int]] = set()
-    merge_at: dict[tuple[int, int], object] = {}
+    merge_at: dict[tuple[int, int], Merge] = {}
     for m in table.merges:
         merge_at[(m.row, m.col)] = m
         for dr in range(m.rowspan):

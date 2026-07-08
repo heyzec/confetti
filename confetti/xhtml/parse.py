@@ -1,35 +1,43 @@
 import xml.etree.ElementTree as ET
 
-from confetti.blocks import Block, CodeBlock, Heading, List, Paragraph, RawBlock, TaskList
+from confetti.blocks import (
+    Block,
+    CodeBlock,
+    Heading,
+    LayoutMacro,
+    List,
+    Paragraph,
+    RawBlock,
+    Table,
+    TaskList,
+)
 from confetti.constants import AC_NS, RI_NS
 from confetti.document import Document
 from confetti.xhtml import (
+    _serialize_element,
     et_tag_to_qname,
     is_local,
     is_macro,
     replace_html_entities,
     serialize_open_tag,
-    _serialize_element,
 )
 from confetti.xhtml.table import xhtml_parse_table
 
 from ..xhtml import (
     _HEADING_TAGS,
+    _LIST_TAGS,
     collect_inline,
     inline_is_simple,
     is_local,
     is_macro,
     normalize,
-    _LIST_TAGS,
 )
 
 # Transparent layout macros: content traversed, wrapper preserved via LayoutMacro.
 _TRANSPARENT_LAYOUT_MACROS = {"easy-heading-free"}
 
 
-def parse_layout_macro(element: ET.Element) -> "LayoutMacro | None":
-    from confetti.blocks import LayoutMacro
-
+def parse_layout_macro(element: ET.Element) -> LayoutMacro | None:
     if not is_macro(element.tag):
         return None
     if is_local(element.tag) != "structured-macro":
@@ -49,7 +57,7 @@ def parse_layout_macro(element: ET.Element) -> "LayoutMacro | None":
     return LayoutMacro(open_xml=open_xml, close_xml=close_xml, blocks=inner_blocks)
 
 
-def parse_code_block(element: ET.Element) -> "CodeBlock | None":
+def parse_code_block(element: ET.Element) -> CodeBlock | None:
     if not is_macro(element.tag) or is_local(element.tag) != "structured-macro":
         return None
     if element.get(f"{{{AC_NS}}}name", "") != "code":
@@ -70,10 +78,7 @@ def parse_code_block(element: ET.Element) -> "CodeBlock | None":
     return CodeBlock(macro_id=macro_id, params=params, body=body)
 
 
-def parse_task_list(element: ET.Element) -> "TaskList | None":
-    from ..xhtml import collect_inline, inline_is_simple, is_local, is_macro, normalize
-    from ..xhtml.parse import _blocks_from_elements
-
+def parse_task_list(element: ET.Element) -> TaskList | None:
     _BLOCK_LOCALS = {
         "p",
         "ul",
@@ -126,7 +131,7 @@ def parse_task_list(element: ET.Element) -> "TaskList | None":
     return TaskList(tasks=tasks)
 
 
-def parse_heading(element: ET.Element) -> "Heading | None":
+def parse_heading(element: ET.Element) -> Heading | None:
     if is_macro(element.tag):
         return None
     local = is_local(element.tag)
@@ -138,7 +143,7 @@ def parse_heading(element: ET.Element) -> "Heading | None":
     return Heading(level=int(local[1]), text=text) if text else None
 
 
-def parse_paragraph(element: ET.Element) -> "Paragraph | None":
+def parse_paragraph(element: ET.Element) -> Paragraph | None:
     if is_macro(element.tag):
         return None
     if is_local(element.tag) != "p":
@@ -149,13 +154,13 @@ def parse_paragraph(element: ET.Element) -> "Paragraph | None":
     return Paragraph(text=text) if text else None
 
 
-def parse_table(element: ET.Element) -> "Table | None":
+def parse_table(element: ET.Element) -> Table | None:
     if is_macro(element.tag) or is_local(element.tag) != "table":
         return None
     return xhtml_parse_table(element)
 
 
-def parse_list(element: ET.Element) -> "List | None":
+def parse_list(element: ET.Element) -> List | None:
     local = is_local(element.tag)
     if local not in ("ul", "ol") or is_macro(element.tag):
         return None
@@ -171,7 +176,7 @@ def parse_list(element: ET.Element) -> "List | None":
     return List(tag=local, items=items)
 
 
-def parse_raw_block(element: ET.Element) -> "RawBlock | None":
+def parse_raw_block(element: ET.Element) -> RawBlock | None:
     local = is_local(element.tag)
 
     if is_macro(element.tag):

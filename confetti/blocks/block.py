@@ -1,11 +1,6 @@
 from __future__ import annotations
 
-from abc import ABC, abstractmethod
+from abc import ABC
 
 
-class Block(ABC):
-    @abstractmethod
-    def to_markdown(self) -> str: ...
-
-    @abstractmethod
-    def to_xhtml(self) -> str: ...
+class Block(ABC): ...

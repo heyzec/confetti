@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import override
 
 from .block import Block
 
@@ -23,15 +22,3 @@ class Table(Block):
     # Metadata for confluence, for now MD doesn't support them
     col_widths: list[float | None] = field(default_factory=list, compare=False)
     alignments: dict[tuple[int, int], str] = field(default_factory=dict, compare=False)
-
-    # @classmethod
-    # def from_xhtml(cls, element: ET.Element) -> Table | None:
-    #     ...
-
-    @override
-    def to_markdown(self) -> str:
-        raise NotImplementedError()
-
-    @override
-    def to_xhtml(self) -> str:
-        raise NotImplementedError()

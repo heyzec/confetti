@@ -4,6 +4,8 @@ import json
 
 from confetti.blocks import Table
 
+from ..blocks import Merge, Table
+from ..xhtml import render_for_markdown
 from . import encode_inline_xml
 
 _WS = " \t\n\r\f\v"
@@ -21,9 +23,7 @@ def _parse_row(line: str) -> list[str]:
     return [encode_inline_xml(c.strip(_WS)) for c in line.strip().strip("|").split("|")]
 
 
-def parse_table(lines: list[str], i: int) -> "tuple[Table, int] | None":
-    from ..blocks import Merge, Table
-
+def parse_table(lines: list[str], i: int) -> tuple[Table, int] | None:
     col_widths: list[float | None] = []
     alignments: dict = {}
     line = lines[i].strip()
@@ -118,8 +118,6 @@ def _symbol_at(table: "Table", row: int, col: int) -> str:
 
 
 def render_table_markdown(table: Table) -> str:
-    from ..xhtml import render_for_markdown
-
     if not table.cells:
         return ""
     ncols = max(len(row) for row in table.cells)
