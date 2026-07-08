@@ -311,8 +311,6 @@ def collect_inline(element: ET.Element) -> str:
 # XHTML traversal
 # ===========================================================================
 
-# Transparent layout macros: content traversed, wrapper preserved via LayoutMacro.
-_TRANSPARENT_LAYOUT_MACROS = {"easy-heading-free"}
 
 _SUPPORTED_INLINE_LOCALS = frozenset(
     {
@@ -366,55 +364,3 @@ _BLOCK_CONTENT_TAGS = frozenset(
 )
 
 
-def _blocks_from_elements(elements: list[ET.Element]) -> list:
-    from ..blocks import (
-        CodeBlock,
-        Heading,
-        LayoutMacro,
-        List,
-        Paragraph,
-        RawBlock,
-        Table,
-        TaskList,
-    )
-
-    _XHTML_BLOCK_TYPES = [
-        LayoutMacro,
-        CodeBlock,
-        TaskList,
-        Heading,
-        Paragraph,
-        Table,
-        List,
-        RawBlock,
-    ]
-
-    blocks = []
-    for element in elements:
-        # Transparent macro wrappers: recurse into their children
-        if is_macro(element.tag):
-            local = is_local(element.tag)
-            if local == "rich-text-body":
-                blocks.extend(_blocks_from_elements(list(element)))
-                continue
-            if local == "structured-macro":
-                sv = element.get(f"{{{AC_NS}}}schema-version", "1")
-                assert sv == "1", f"unexpected ac:schema-version {sv!r}"
-                name = element.get(f"{{{AC_NS}}}name", "")
-                if name in _TRANSPARENT_LAYOUT_MACROS:
-                    blocks.extend(_blocks_from_elements(list(element)))
-                    continue
-
-        block = None
-        for cls in _XHTML_BLOCK_TYPES:
-            block = cls.from_xhtml(element)
-            if block is not None:
-                break
-
-        if block is not None:
-            blocks.append(block)
-        else:
-            # Transparent non-macro container (div, body, etc.) → recurse
-            blocks.extend(_blocks_from_elements(list(element)))
-
-    return blocks

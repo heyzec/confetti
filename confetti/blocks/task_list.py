@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-import re
-import xml.etree.ElementTree as ET
 from dataclasses import dataclass
 from typing import override
 
@@ -15,67 +13,9 @@ from .block import Block
 class TaskList(Block):
     tasks: list[tuple[int, str, str]]  # (task_id, status, body_md)
 
-    @classmethod
-    def from_xhtml(cls, element: ET.Element) -> TaskList | None:
-        from ..xhtml import (
-            _blocks_from_elements,
-            collect_inline,
-            is_macro,
-            is_local,
-            inline_is_simple,
-            normalize,
-        )
-
-        _BLOCK_LOCALS = {
-            "p",
-            "ul",
-            "ol",
-            "h1",
-            "h2",
-            "h3",
-            "h4",
-            "h5",
-            "h6",
-            "pre",
-            "table",
-        }
-
-        if not is_macro(element.tag) or is_local(element.tag) != "task-list":
-            return None
-
-        tasks: list[tuple[int, str, str]] = []
-        for task_el in element:
-            if is_local(task_el.tag) != "task":
-                continue
-            task_id = 0
-            status = "incomplete"
-            body_md = ""
-            for child in task_el:
-                loc = is_local(child.tag)
-                if loc == "task-id":
-                    task_id = int(child.text or "0")
-                elif loc == "task-status":
-                    status = child.text or "incomplete"
-                elif loc == "task-body":
-                    children = list(child)
-                    has_block = any(
-                        is_local(c.tag) in _BLOCK_LOCALS
-                        for c in children
-                        if not is_macro(c.tag)
-                    )
-                    has_direct_text = bool(child.text and child.text.strip())
-                    if has_block and not has_direct_text:
-                        blocks = _blocks_from_elements(children)
-                        body_md = (
-                            "\n".join(b.to_markdown() for b in blocks) if blocks else ""
-                        )
-                    elif inline_is_simple(child):
-                        body_md = normalize(collect_inline(child))
-                    else:
-                        return None  # unsupported body → fall back to RawBlock
-            tasks.append((task_id, status, body_md))
-
-        return cls(tasks=tasks)
+    # @classmethod
+    # def from_xhtml(cls, element: ET.Element) -> TaskList | None:
+    #     ...
 
     # @classmethod
     # def from_markdown(cls, lines: list[str], i: int) -> tuple[TaskList, int] | None:

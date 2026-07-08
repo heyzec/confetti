@@ -1,11 +1,8 @@
 from __future__ import annotations
 
-import xml.etree.ElementTree as ET
 from dataclasses import dataclass, field
 from typing import override
 
-from ..xhtml import is_local, is_macro
-from ..xhtml.table import xhtml_parse_table
 from .block import Block
 
 
@@ -27,11 +24,9 @@ class Table(Block):
     col_widths: list[float | None] = field(default_factory=list, compare=False)
     alignments: dict[tuple[int, int], str] = field(default_factory=dict, compare=False)
 
-    @classmethod
-    def from_xhtml(cls, element: ET.Element) -> Table | None:
-        if is_macro(element.tag) or is_local(element.tag) != "table":
-            return None
-        return xhtml_parse_table(element)
+    # @classmethod
+    # def from_xhtml(cls, element: ET.Element) -> Table | None:
+    #     ...
 
     @override
     def to_markdown(self) -> str:

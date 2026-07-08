@@ -7,13 +7,12 @@ from ..constants import RAW_OPEN
 from . import (
     _BLOCK_CONTENT_TAGS,
     _CELL_TAGS,
+    _serialize_element,
     collect_inline,
     inline_is_simple,
     is_local,
     is_macro,
     normalize,
-    serialize_open_tag,
-    _serialize_element,
 )
 
 
@@ -142,7 +141,9 @@ def xhtml_parse_table(element: ET.Element) -> "Table | None":
 
     return Table(
         cells=cells_2d,
-        merges=[Merge(row=r, col=c, rowspan=rs, colspan=cs) for r, c, rs, cs in merges_out],
+        merges=[
+            Merge(row=r, col=c, rowspan=rs, colspan=cs) for r, c, rs, cs in merges_out
+        ],
         col_widths=col_widths,
         alignments=alignments,
     )
