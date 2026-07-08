@@ -1,17 +1,10 @@
 from __future__ import annotations
 
+from confetti.markdown.render import render_markdown
 from confetti.xhtml.parse import parse_xhtml
+from confetti.xhtml.render import render_xhtml
 
-from .document import Document
 from .markdown.parse import parse_markdown
-
-
-def render_markdown(doc: Document) -> str:
-    return "\n\n".join(b.to_markdown() for b in doc.blocks)
-
-
-def render_xhtml(doc: Document) -> str:
-    return "".join(b.to_xhtml() for b in doc.blocks)
 
 
 def xhtml_to_markdown(xhtml: str) -> str:

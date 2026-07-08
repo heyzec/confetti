@@ -3,7 +3,6 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import override
 
-from ..xhtml import render_for_markdown, render_for_xhtml
 from .block import Block
 
 
@@ -21,8 +20,8 @@ class Paragraph(Block):
 
     @override
     def to_markdown(self) -> str:
-        return render_for_markdown(self.text)
+        raise NotImplementedError()
 
     @override
     def to_xhtml(self) -> str:
-        return f"<p>{render_for_xhtml(self.text)}</p>"
+        raise NotImplementedError()

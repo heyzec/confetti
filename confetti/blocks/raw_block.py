@@ -22,8 +22,8 @@ class RawBlock(Block):
 
     @override
     def to_markdown(self) -> str:
-        return f"<!-- confetti:raw\n{self.xml}\n-->"
+        raise NotImplementedError()
 
     @override
     def to_xhtml(self) -> str:
-        return self.xml
+        raise NotImplementedError()

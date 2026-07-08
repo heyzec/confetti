@@ -37,15 +37,9 @@ class LayoutMacro(Block):
 
     @override
     def to_markdown(self) -> str:
-        inner = "\n\n".join(b.to_markdown() for b in self.blocks)
-        return (
-            f"<!-- confetti:layout-open\n{self.open_xml}\n-->"
-            f"\n\n{inner}\n\n"
-            f"<!-- confetti:layout-close\n{self.close_xml}\n-->"
-        )
+        raise NotImplementedError()
 
     @override
     def to_xhtml(self) -> str:
-        return (
-            self.open_xml + "".join(b.to_xhtml() for b in self.blocks) + self.close_xml
-        )
+        raise NotImplementedError()
+

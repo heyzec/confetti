@@ -3,7 +3,6 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import override
 
-from ..xhtml import render_for_xhtml
 from .block import Block
 
 
@@ -22,11 +21,8 @@ class List(Block):
 
     @override
     def to_markdown(self) -> str:
-        if self.tag == "ol":
-            return "\n".join(f"{n}. {item}" for n, item in enumerate(self.items, 1))
-        return "\n".join(f"- {item}" for item in self.items)
+        raise NotImplementedError()
 
     @override
     def to_xhtml(self) -> str:
-        inner = "".join(f"<li>{render_for_xhtml(item)}</li>" for item in self.items)
-        return f"<{self.tag}>{inner}</{self.tag}>"
+        raise NotImplementedError()

@@ -7,11 +7,11 @@ from confetti.convert import (
     markdown_to_xhtml,
     parse_markdown,
     parse_xhtml,
-    render_markdown,
     render_xhtml,
     xhtml_to_markdown,
 )
 from confetti.document import Document
+from confetti.markdown.render import render_markdown
 
 # ---------------------------------------------------------------------------
 # Markdown → IR

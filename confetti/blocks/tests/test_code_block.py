@@ -8,6 +8,7 @@ from confetti.convert import (
     render_xhtml,
     xhtml_to_markdown,
 )
+from confetti.markdown.render import render_markdown
 
 
 class TestCodeBlockMarkdown(unittest.TestCase):
@@ -80,7 +81,7 @@ class TestCodeBlockRoundtrip(unittest.TestCase):
     def test_bare_fence_roundtrips_to_markdown(self):
         md = "```python\nprint(1)\n```"
         doc = parse_markdown(md)
-        self.assertEqual(doc.blocks[0].to_markdown(), md)
+        self.assertEqual(render_markdown(doc), md)
 
     def test_roundtrip_with_language(self):
         xhtml = '<ac:structured-macro ac:name="code" ac:schema-version="1" ac:macro-id="r1"><ac:parameter ac:name="language">sql</ac:parameter><ac:parameter ac:name="title">q</ac:parameter><ac:parameter ac:name="linenumbers">true</ac:parameter><ac:plain-text-body><![CDATA[SELECT 1]]></ac:plain-text-body></ac:structured-macro>'

@@ -30,12 +30,8 @@ class Table(Block):
 
     @override
     def to_markdown(self) -> str:
-        from ..markdown.table import render_table_markdown
-
-        return render_table_markdown(self)
+        raise NotImplementedError()
 
     @override
     def to_xhtml(self) -> str:
-        from ..xhtml.table import render_table_xhtml
-
-        return render_table_xhtml(self)
+        raise NotImplementedError()

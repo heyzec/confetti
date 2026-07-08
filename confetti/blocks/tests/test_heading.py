@@ -7,6 +7,8 @@ from confetti.convert import (
     render_xhtml,
     xhtml_to_markdown,
 )
+from confetti.markdown.render import render_heading as md_render_heading
+from confetti.xhtml.render import render_heading as xhtml_render_heading
 
 
 class TestHeadingMarkdown(unittest.TestCase):
@@ -21,7 +23,7 @@ class TestHeadingMarkdown(unittest.TestCase):
     def test_render_atx(self):
         for level in range(1, 7):
             block = Heading(level=level, text="Hello World")
-            actual = block.to_markdown()
+            actual = md_render_heading(block)
             expected = "#" * level + " Hello World"
             self.assertEqual(expected, actual)
 
@@ -38,7 +40,7 @@ class TestHeadingXHTML(unittest.TestCase):
     def test_render(self):
         for level in range(1, 7):
             block = Heading(level=level, text="Hello World")
-            actual = block.to_xhtml()
+            actual = xhtml_render_heading(block)
             expected = f"<h{level}>Hello World</h{level}>"
             self.assertEqual(expected, actual)
 
