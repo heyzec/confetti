@@ -4,8 +4,7 @@ import html.entities
 import re
 import xml.etree.ElementTree as ET
 
-from ..constants import AC_NS, MACRO_NS, RAW_CLOSE, RAW_OPEN, RI_NS, SENTINEL_RE
-from ..markdown import escape_md_text
+from ..constants import AC_NS, MACRO_NS, RI_NS
 
 # ===========================================================================
 # Namespace / XML constants
@@ -23,12 +22,13 @@ _CELL_TAGS = {"td", "th"}
 _LIST_TAGS = {"ul", "ol"}
 
 
-def normalize(text: str) -> str:
-    """Collapse ASCII whitespace, but preserve non-breaking spaces (\u00a0)."""
-    return re.sub(r"[ \t\n\r\f\v]+", " ", text).strip(" \t\n\r\f\v")
+# def normalize(text: str) -> str:
+#     assert isinstance(text, str), f"Expected str, got {type(text)}"
+#     """Collapse ASCII whitespace, but preserve non-breaking spaces (\u00a0)."""
+#     return re.sub(r"[ \t\n\r\f\v]+", " ", text).strip(" \t\n\r\f\v")
 
 
-def _xml_escape(s: str) -> str:
+def xml_escape(s: str) -> str:
     """Escape for XML text/attribute content — encodes &, <, >, " but NOT ' (valid in text nodes)."""
     return (
         s.replace("&", "&amp;")
@@ -36,59 +36,6 @@ def _xml_escape(s: str) -> str:
         .replace(">", "&gt;")
         .replace('"', "&quot;")
     )
-
-
-def _re_encode_entities(text: str) -> str:
-    UNICODE_TO_ENTITY = {
-        "\u00a0": "&nbsp;",
-        "\u2192": "&rarr;",
-        "\u2190": "&larr;",
-        "\u2194": "&harr;",
-        "\u21d2": "&rArr;",
-        "\u2013": "&ndash;",
-        "\u2014": "&mdash;",
-    }
-    for ch, ent in UNICODE_TO_ENTITY.items():
-        text = text.replace(ch, ent)
-    return text
-
-
-def _re_encode_entities_in_text(xml: str) -> str:
-    """Re-encode HTML entities only in XML text nodes.
-
-    Skips <![CDATA[...]]> sections and tag content (< ... >) so that
-    non-breaking spaces inside code blocks are not converted to &nbsp;
-    and attribute values are not double-escaped.
-    In text nodes, also encodes " as &quot; to match Confluence XHTML.
-    """
-    result: list[str] = []
-    pos = 0
-    n = len(xml)
-    while pos < n:
-        if xml[pos : pos + 9] == "<![CDATA[":
-            end = xml.find("]]>", pos + 9)
-            if end == -1:
-                result.append(xml[pos:])
-                break
-            result.append(xml[pos : end + 3])
-            pos = end + 3
-        elif xml[pos] == "<":
-            end = xml.find(">", pos)
-            if end == -1:
-                result.append(xml[pos:])
-                break
-            result.append(xml[pos : end + 1])
-            pos = end + 1
-        else:
-            end = xml.find("<", pos)
-            chunk = xml[pos:] if end == -1 else xml[pos:end]
-            chunk = _re_encode_entities(chunk)
-            chunk = chunk.replace('"', "&quot;")
-            result.append(chunk)
-            if end == -1:
-                break
-            pos = end
-    return "".join(result)
 
 
 def replace_html_entities(text: str) -> str:
@@ -132,186 +79,6 @@ def serialize_open_tag(element: ET.Element) -> str:
     return "".join(parts)
 
 
-def _restore_cdata(xml: str) -> str:
-    """Wrap ac:plain-text-body content back into CDATA sections.
-
-    ET strips CDATA markers on parse; this restores them so the output
-    matches the original Confluence XHTML format.
-    """
-
-    def _wrap(m: re.Match[str]) -> str:
-        open_tag = m.group(1)
-        content = m.group(2)
-        close_tag = m.group(3)
-        content = (
-            content.replace("&lt;", "<").replace("&gt;", ">").replace("&amp;", "&")
-        )
-        return f"{open_tag}<![CDATA[{content}]]>{close_tag}"
-
-    return re.sub(
-        r"(<ac:plain-text-body>)(.*?)(</ac:plain-text-body>)",
-        _wrap,
-        xml,
-        flags=re.DOTALL,
-    )
-
-
-def _serialize_element(element: ET.Element) -> str:
-    """Serialize an ET element to an XML string, excluding its tail and
-    namespace declarations.  Re-encodes HTML entities and restores CDATA
-    sections stripped by ElementTree.
-    """
-    saved_tail = element.tail
-    element.tail = None
-    xml = ET.tostring(element, encoding="unicode")
-    element.tail = saved_tail
-    xml = xml.replace(f' xmlns:ac="{AC_NS}"', "")
-    xml = xml.replace(f' xmlns:ri="{RI_NS}"', "")
-    xml = _restore_cdata(xml)
-    xml = _re_encode_entities_in_text(xml)
-    return xml
-
-
-# ===========================================================================
-# Inline Markdown ↔ XHTML
-# ===========================================================================
-
-
-_INLINE_MD_PATTERNS = [
-    (re.compile(r"\\(.)"), "escape"),
-    (re.compile(r"\[([^\]]*)\]\(([^)]*)\)"), "link"),
-    (re.compile(r"\*\*\*(.+?)\*\*\*", re.DOTALL), "strong_em"),
-    (re.compile(r"___(.+?)___", re.DOTALL), "strong_em"),
-    (re.compile(r"\*\*(.+?)\*\*", re.DOTALL), "strong"),
-    (re.compile(r"__(.+?)__", re.DOTALL), "strong"),
-    (re.compile(r"~~(.+?)~~", re.DOTALL), "s"),
-    (re.compile(r"`([^`\n]+)`"), "code"),
-    (re.compile(r"\*([^*\n]+)\*"), "em"),
-    (re.compile(r"_([^_\n]+)_"), "em"),
-    (re.compile(r"📅\s*(\d{4}-\d{2}-\d{2})"), "date"),
-]
-
-_XHTML_INLINE_TAGS = {
-    "strong": ("**", "**"),
-    "b": ("**", "**"),
-    "em": ("*", "*"),
-    "i": ("*", "*"),
-    "s": ("~~", "~~"),
-    "del": ("~~", "~~"),
-    "code": ("`", "`"),
-}
-
-
-# suspicious function
-def _render_inline_md(text: str) -> str:
-    """Convert inline Markdown markers in a plain string to XHTML tags."""
-    result: list[str] = []
-    pos = 0
-    while pos < len(text):
-        best_m, best_name, best_start = None, None, len(text)
-        for pat, name in _INLINE_MD_PATTERNS:
-            m = pat.search(text, pos)
-            if m and m.start() < best_start:
-                best_m, best_name, best_start = m, name, m.start()
-
-        if best_m is None:
-            result.append(_xml_escape(text[pos:]))
-            break
-
-        if best_start > pos:
-            result.append(_xml_escape(text[pos:best_start]))
-
-        inner = _xml_escape(best_m.group(1))
-        if best_name == "link":
-            result.append(f'<a href="{_xml_escape(best_m.group(2))}">{inner}</a>')
-        elif best_name == "strong_em":
-            result.append(f"<em><strong>{inner}</strong></em>")
-        elif best_name == "strong":
-            result.append(f"<strong>{inner}</strong>")
-        elif best_name == "s":
-            result.append(f"<s>{inner}</s>")
-        elif best_name == "code":
-            result.append(f"<code>{inner}</code>")
-        elif best_name == "em":
-            result.append(f"<em>{inner}</em>")
-        elif best_name == "escape":
-            result.append(_xml_escape(best_m.group(1)))
-        elif best_name == "date":
-            result.append(f'<time datetime="{best_m.group(1)}" />')
-
-        pos = best_m.end()
-
-    return "".join(result)
-
-
-def render_for_xhtml(text: str) -> str:
-    """Convert inline Markdown + sentinel-wrapped raw XML to XHTML.
-    Also re-encodes non-breaking spaces and arrow characters as HTML entities.
-    """
-    if RAW_OPEN not in text:
-        return _re_encode_entities(_render_inline_md(text))
-
-    raw_fragments: list[str] = []
-
-    def _extract(m: re.Match[str]) -> str:
-        raw_fragments.append(m.group(1))
-        return f"\x01{len(raw_fragments) - 1}\x01"
-
-    placeholder_text = SENTINEL_RE.sub(_extract, text)
-    rendered = _render_inline_md(placeholder_text)
-    for i, raw in enumerate(raw_fragments):
-        rendered = rendered.replace(f"\x01{i}\x01", raw)
-    return _re_encode_entities(rendered)
-
-
-def render_for_markdown(text: str) -> str:
-    """Strip sentinels from text for Markdown output; raw XML becomes inline HTML."""
-    return text.replace(RAW_OPEN, "").replace(RAW_CLOSE, "")
-
-
-def _inline_text(element: ET.Element) -> str:
-    """Inline-Markdown representation of a child element (without its tail)."""
-    if is_macro(element.tag):
-        return f"{RAW_OPEN}{_serialize_element(element)}{RAW_CLOSE}"
-
-    local = is_local(element.tag)
-    if local == "br":
-        return " "
-    if local == "time":
-        dt = element.get("datetime", "")
-        return f"📅 {dt}" if dt else ""
-    if local == "a":
-        href = element.get("href", "")
-        inner = collect_inline(element)
-        return f"[{inner}]({href})" if href else inner
-    if local in _XHTML_INLINE_TAGS:
-        pre, post = _XHTML_INLINE_TAGS[local]
-        inner = collect_inline(element)
-        return f"{pre}{inner}{post}" if inner else ""
-
-    return collect_inline(element)
-
-
-def collect_inline(element: ET.Element) -> str:
-    """Collect all inline-Markdown text from within an element."""
-    parts: list[str] = []
-    if element.text:
-        # Escape plain text nodes only — not the markdown produced by _inline_text,
-        # which may contain backtick code or link URLs where _ must not be escaped.
-        parts.append(escape_md_text(element.text))
-    for child in element:
-        parts.append(_inline_text(child))
-        if child.tail:
-            parts.append(escape_md_text(child.tail))  # tail is plain text, same rule
-
-    return "".join(parts)
-
-
-# ===========================================================================
-# XHTML traversal
-# ===========================================================================
-
-
 _SUPPORTED_INLINE_LOCALS = frozenset(
     {
         "br",
@@ -343,24 +110,3 @@ def inline_is_simple(element: ET.Element) -> bool:
         if local not in ("a", "br", "time") and child.attrib:
             return False
     return True
-
-
-_BLOCK_CONTENT_TAGS = frozenset(
-    {
-        "p",
-        "div",
-        "ul",
-        "ol",
-        "table",
-        "h1",
-        "h2",
-        "h3",
-        "h4",
-        "h5",
-        "h6",
-        "pre",
-        "blockquote",
-    }
-)
-
-

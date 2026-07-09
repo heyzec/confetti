@@ -6,6 +6,6 @@ from .block import Block
 
 
 @dataclass
-class List(Block):
-    tag: str  # "ul" or "ol"
-    items: list[list[Block]]  # inline markdown per item
+class Link(Block):
+    url: str
+    display_text: list[Block]

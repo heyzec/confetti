@@ -11,8 +11,13 @@ from confetti.blocks import (
     Table,
     TaskList,
 )
+from confetti.blocks.code import Code
+from confetti.blocks.date import Date
+from confetti.blocks.link import Link
+from confetti.blocks.styled_text import StyledText
+from confetti.blocks.text import Text
 from confetti.document import Document
-from confetti.xhtml import render_for_markdown
+from confetti.markdown import escape_md_text
 
 from ..markdown.table import render_table_markdown
 
@@ -33,18 +38,50 @@ def render_code_block(block: CodeBlock) -> str:
     return f"<!-- confetti:code {meta_str} -->\n{fence}"
 
 
-def render_heading(block: Heading) -> str:
-    return f"{'#' * block.level} {render_for_markdown(block.text)}"
+def render_inline(block: Block) -> str:
+    if isinstance(block, Text):
+        return escape_md_text(block.text)
+    if isinstance(block, StyledText):
+        contents = "".join([render_inline(child) for child in block.body])
+        if block.kind == "bold":
+            return f"**{contents}**"
+        if block.kind == "italic":
+            return f"*{contents}*"
+        if block.kind == "strikethrough":
+            return f"~~{contents}~~"
+        assert False, f"Unsupported styled text kind: {block.kind}"
+    if isinstance(block, Link):
+        contents = "".join([render_inline(child) for child in block.display_text])
+        return f"[{contents}]({block.url})"
+    if isinstance(block, Code):
+        return f"`{block.code}`"
+    if isinstance(block, Date):
+        return f"📅 {block.format()}"
+
+    if isinstance(block, RawBlock):
+        return block.xml  # raw XML is preserved verbatim in inline context
+    assert False, f"Unsupported inline block type: {type(block).__name__}"
 
 
 def render_paragraph(block: Paragraph) -> str:
-    return render_for_markdown(block.text)
+    line = "".join(render_inline(child) for child in block.body)
+    return line.strip()
+
+
+def render_heading(block: Heading) -> str:
+    subline = "".join(render_inline(child) for child in block.body)
+    return f"{'#' * block.level} " + subline
 
 
 def render_list(block: List) -> str:
-    if block.tag == "ol":
-        return "\n".join(f"{n}. {item}" for n, item in enumerate(block.items, 1))
-    return "\n".join(f"- {item}" for item in block.items)
+    lines = []
+    for n, item in enumerate(block.items, 1):
+        content = "".join(render_inline(b) for b in item)
+        if block.tag == "ol":
+            lines.append(f"{n}. {content}")
+        else:
+            lines.append(f"- {content}")
+    return "\n".join(lines)
 
 
 def render_table(block: Table) -> str:
@@ -66,13 +103,10 @@ def render_raw_block(block: RawBlock) -> str:
 
 def render_task_list(block: TaskList) -> str:
     lines = []
-    for _task_id, status, body_md in block.tasks:
-        check = "x" if status == "complete" else " "
-        body_lines = body_md.splitlines()
-        first = body_lines[0] if body_lines else ""
-        rest = ["    " + l for l in body_lines[1:]]
-        lines.append(f"- [{check}] {first}")
-        lines.extend(rest)
+    for task_item in block.tasks:
+        check = "x" if task_item.done else " "
+        rendered = "".join(render_inline(b) for b in task_item.body)
+        lines.append(f"- [{check}] {rendered}")
     return "\n".join(lines)
 
 

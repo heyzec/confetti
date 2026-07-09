@@ -16,7 +16,7 @@ class Merge:
 @dataclass
 class Table(Block):
     cells: list[
-        list[str | None]
+        list[list[Block] | None]
     ]  # 2D array; first row = headers; None = covered by a merge
     merges: list[Merge] = field(default_factory=list)
     # Metadata for confluence, for now MD doesn't support them

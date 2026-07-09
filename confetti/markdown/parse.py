@@ -4,6 +4,7 @@ import json
 import re
 
 from confetti.blocks import (
+    Block,
     CodeBlock,
     Heading,
     LayoutMacro,
@@ -12,9 +13,14 @@ from confetti.blocks import (
     RawBlock,
     TaskList,
 )
+from confetti.blocks.code import Code
+from confetti.blocks.date import Date
+from confetti.blocks.link import Link
+from confetti.blocks.styled_text import StyledText
+from confetti.blocks.task_list import TaskListItem
+from confetti.blocks.text import Text
 from confetti.document import Document
 
-from . import encode_inline_xml
 from .constants import ATX_HEADING, SETEXT_DASH, SETEXT_EQ
 from .table import parse_table
 
@@ -96,7 +102,7 @@ def parse_task_list(lines: list[str], i: int) -> tuple[TaskList, int] | None:
     if not _TASK_GFM.match(lines[i]):
         return None
 
-    tasks: list[tuple[int, str, str]] = []
+    tasks: list[TaskListItem] = []
     auto_id = 1
     while i < len(lines):
         m = _TASK_GFM.match(lines[i])
@@ -110,8 +116,8 @@ def parse_task_list(lines: list[str], i: int) -> tuple[TaskList, int] | None:
             i += 1
         if cont:
             body = (body + "\n" if body else "") + "\n".join(cont)
-        status = "incomplete" if check == " " else "complete"
-        tasks.append((auto_id, status, body))
+        done = check != " "
+        tasks.append(TaskListItem(task_id=auto_id, done=done, body=parse_inline(body)))
         auto_id += 1
     if not tasks:
         return None
@@ -137,12 +143,12 @@ def parse_list(lines: list[str], i: int) -> tuple[List, int] | None:
     if not pat:
         return None
 
-    items: list[str] = []
+    items: list[list[Block]] = []
     while i < len(lines):
         m = pat.match(lines[i])
         if not m:
             break
-        items.append(m.group(1))
+        items.append(parse_inline(m.group(1)))
         i += 1
 
     return List(tag=tag, items=items), i
@@ -153,16 +159,16 @@ def parse_heading(lines: list[str], i: int) -> tuple[Heading, int] | None:
     m = ATX_HEADING.match(line)
     if m:
         return (
-            Heading(level=len(m.group(1)), text=encode_inline_xml(m.group(2).strip())),
+            Heading(level=len(m.group(1)), body=parse_inline(m.group(2).strip())),
             i + 1,
         )
     stripped = line.strip()
     if stripped and i + 1 < len(lines):
         nxt = lines[i + 1].strip()
         if SETEXT_EQ.match(nxt):
-            return Heading(level=1, text=encode_inline_xml(stripped)), i + 2
+            return Heading(level=1, body=parse_inline(stripped)), i + 2
         if SETEXT_DASH.match(nxt):
-            return Heading(level=2, text=encode_inline_xml(stripped)), i + 2
+            return Heading(level=2, body=parse_inline(stripped)), i + 2
     return None
 
 
@@ -188,13 +194,98 @@ def parse_paragraph(lines: list[str], i: int) -> tuple[Paragraph, int] | None:
         para_lines.append(cur_s)
         i += 1
     if para_lines:
-        return Paragraph(text=encode_inline_xml(" ".join(para_lines))), i
+        # return Paragraph(text=encode_inline_xml(" ".join(para_lines))), i
+        body = []
+        for line in para_lines:
+            temp = parse_inline(line)
+            body.extend(temp)
+        return Paragraph(body=body), i
     return None
+
+
+def parse_styled_text(lines: list[str], i: int) -> tuple[Paragraph, int] | None:
+    print("Parsing styled text starting at line", i)
+    # This is a placeholder for parsing styled text if needed.
+    # Currently, it behaves the same as parse_paragraph.
+    return parse_paragraph(lines, i)
+
+
+_INLINE_MD_PATTERNS = [
+    (re.compile(r"\\(.)"), "escape"),
+    (re.compile(r"\[([^\]]*)\]\(([^)]*)\)"), "link"),
+    (re.compile(r"\*\*\*(.+?)\*\*\*", re.DOTALL), "strong_em"),
+    (re.compile(r"___(.+?)___", re.DOTALL), "strong_em"),
+    (re.compile(r"\*\*(.+?)\*\*", re.DOTALL), "strong"),
+    (re.compile(r"__(.+?)__", re.DOTALL), "strong"),
+    (re.compile(r"~~(.+?)~~", re.DOTALL), "s"),
+    (re.compile(r"`([^`\n]+)`"), "code"),
+    (re.compile(r"\*([^*\n]+)\*"), "em"),
+    (re.compile(r"_([^_\n]+)_"), "em"),
+    (re.compile(r"📅\s*(\d{4}-\d{2}-\d{2})"), "date"),
+]
+
+
+def parse_inline(text: str) -> list[Block]:
+    """Convert inline Markdown markers in a plain string to XHTML tags."""
+    result: list[Block] = []
+    pos = 0
+    while pos < len(text):
+        best_m, best_name, best_start = None, None, len(text)
+        for pat, name in _INLINE_MD_PATTERNS:
+            m = pat.search(text, pos)
+            if m and m.start() < best_start:
+                best_m, best_name, best_start = m, name, m.start()
+
+        # print(
+        #     f"Best match {best_name} at position {best_start} with match: {best_m.group(0) if best_m else None}"
+        # )
+
+        if best_m is None:
+            # print("Here is the text to append as Text:", text[pos:])
+            result.append(Text(text=text[pos:]))
+            break
+
+        if best_start > pos:
+            # print("Here is the text to append as Text:", text[pos:best_start])
+            result.append(Text(text=text[pos:best_start]))
+
+        inner_text = best_m.group(1)
+        if best_name == "link":
+            result.append(
+                Link(url=best_m.group(2), display_text=parse_inline(inner_text))
+            )
+        elif best_name == "strong_em":
+            # Commonmark: <em><strong>...</strong></em> is always preferred to <strong><em>...</em></strong>
+            result.append(
+                StyledText(
+                    kind="italic",
+                    body=[StyledText(kind="bold", body=parse_inline(inner_text))],
+                )
+            )
+        elif best_name == "strong":
+            result.append(StyledText(kind="bold", body=parse_inline(inner_text)))
+        elif best_name == "s":
+            result.append(
+                StyledText(kind="strikethrough", body=parse_inline(inner_text))
+            )
+        elif best_name == "code":
+            result.append(Code(code=inner_text))
+        elif best_name == "em":
+            result.append(StyledText(kind="italic", body=parse_inline(inner_text)))
+        elif best_name == "escape":
+            result.append(Text(text=best_m.group(1)))
+        elif best_name == "date":
+            dt_fmt = best_m.group(1)
+            result.append(Date.parse(dt_fmt))
+
+        pos = best_m.end()
+
+    return result
 
 
 # To deprecate (avoid use by parse_layout_macro)
 def md_blocks_from_lines(lines: list[str]) -> list:
-    constructors = [
+    parsers = [
         parse_layout_macro,
         parse_code_block,
         parse_task_list,
@@ -211,8 +302,8 @@ def md_blocks_from_lines(lines: list[str]) -> list:
         if not lines[i].strip():
             i += 1
             continue
-        for constructor in constructors:
-            result = constructor(lines, i)
+        for parser in parsers:
+            result = parser(lines, i)
             if result is not None:
                 block, i = result
                 blocks.append(block)

@@ -9,5 +9,12 @@ from .block import Block
 
 
 @dataclass
+class TaskListItem:
+    task_id: int
+    done: bool
+    body: list[Block]
+
+
+@dataclass
 class TaskList(Block):
-    tasks: list[tuple[int, str, str]]  # (task_id, status, body_md)
+    tasks: list[TaskListItem]

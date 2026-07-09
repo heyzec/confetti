@@ -1,6 +1,7 @@
 import unittest
 
 from confetti.blocks import Heading
+from confetti.blocks.text import Text
 from confetti.convert import (
     parse_markdown,
     parse_xhtml,
@@ -17,15 +18,27 @@ class TestHeadingMarkdown(unittest.TestCase):
             md = "#" * level + " Hello World"
             doc = parse_markdown(md)
             actual = doc.blocks[0]
-            expected = Heading(level=level, text="Hello World")
+            expected = Heading(level=level, body=[Text(text="Hello World")])
             self.assertEqual(expected, actual)
 
     def test_render_atx(self):
         for level in range(1, 7):
-            block = Heading(level=level, text="Hello World")
+            block = Heading(level=level, body=[Text(text="Hello World")])
             actual = md_render_heading(block)
             expected = "#" * level + " Hello World"
             self.assertEqual(expected, actual)
+
+    def test_parse_setext_h1(self):
+        doc = parse_markdown("Title\n=====")
+        actual = doc.blocks[0]
+        expected = Heading(level=1, body=[Text(text="Title")])
+        self.assertEqual(expected, actual)
+
+    def test_parse_setext_h2(self):
+        doc = parse_markdown("Subtitle\n--------")
+        actual = doc.blocks[0]
+        expected = Heading(level=2, body=[Text(text="Subtitle")])
+        self.assertEqual(expected, actual)
 
 
 class TestHeadingXHTML(unittest.TestCase):
@@ -34,12 +47,12 @@ class TestHeadingXHTML(unittest.TestCase):
             xhtml = f"<h{level}>Hello World</h{level}>"
             doc = parse_xhtml(xhtml)
             actual = doc.blocks[0]
-            expected = Heading(level=level, text="Hello World")
+            expected = Heading(level=level, body=[Text(text="Hello World")])
             self.assertEqual(expected, actual)
 
     def test_render(self):
         for level in range(1, 7):
-            block = Heading(level=level, text="Hello World")
+            block = Heading(level=level, body=[Text(text="Hello World")])
             actual = xhtml_render_heading(block)
             expected = f"<h{level}>Hello World</h{level}>"
             self.assertEqual(expected, actual)

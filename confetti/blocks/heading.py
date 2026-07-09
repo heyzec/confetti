@@ -8,4 +8,4 @@ from .block import Block
 @dataclass
 class Heading(Block):
     level: int
-    text: str
+    body: list[Block]  # only inline blocks actually

@@ -1,6 +1,7 @@
 import unittest
 
 from confetti.blocks import List, Paragraph, RawBlock
+from confetti.blocks.text import Text
 from confetti.convert import (
     markdown_to_xhtml,
     parse_markdown,
@@ -15,7 +16,13 @@ class TestListMarkdown(unittest.TestCase):
         doc = parse_markdown(md)
         self.assertEqual(len(doc.blocks), 1)
         actual = doc.blocks[0]
-        expected = List(tag="ul", items=["Alpha", "Beta"])
+        expected = List(
+            tag="ul",
+            items=[
+                [Text(text="Alpha")],
+                [Text(text="Beta")],
+            ],
+        )
         self.assertEqual(actual, expected)
 
     def test_parse_ol(self):
@@ -23,7 +30,13 @@ class TestListMarkdown(unittest.TestCase):
         doc = parse_markdown(md)
         self.assertEqual(len(doc.blocks), 1)
         actual = doc.blocks[0]
-        expected = List(tag="ol", items=["First", "Second"])
+        expected = List(
+            tag="ol",
+            items=[
+                [Text(text="First")],
+                [Text(text="Second")],
+            ],
+        )
         self.assertEqual(actual, expected)
 
 
@@ -31,18 +44,28 @@ class TestListXHTML(unittest.TestCase):
     def test_parse_ul(self):
         xhtml = "<ul><li>Alpha</li><li>Beta</li></ul>"
         doc = parse_xhtml(xhtml)
-        b = doc.blocks[0]
-        assert isinstance(b, List)
-        self.assertEqual(b.tag, "ul")
-        self.assertEqual(b.items, ["Alpha", "Beta"])
+        actual = doc.blocks[0]
+        expected = List(
+            tag="ul",
+            items=[
+                [Text(text="Alpha")],
+                [Text(text="Beta")],
+            ],
+        )
+        self.assertEqual(actual, expected)
 
     def test_parse_ol(self):
         xhtml = "<ol><li>First</li><li>Second</li></ol>"
         doc = parse_xhtml(xhtml)
-        b = doc.blocks[0]
-        assert isinstance(b, List)
-        self.assertEqual(b.tag, "ol")
-        self.assertEqual(b.items, ["First", "Second"])
+        actual = doc.blocks[0]
+        expected = List(
+            tag="ol",
+            items=[
+                [Text(text="First")],
+                [Text(text="Second")],
+            ],
+        )
+        self.assertEqual(actual, expected)
 
 
 class TestListConvert(unittest.TestCase):
@@ -52,8 +75,15 @@ class TestListConvert(unittest.TestCase):
         self.assertEqual(len(doc.blocks), 2)
         actual1 = doc.blocks[0]
         actual2 = doc.blocks[1]
-        expected1 = Paragraph(text="Intro")
-        expected2 = List(tag="ol", items=["First", "Second"])
+        expected1 = Paragraph(body=[Text(text="Intro")])
+        # expected2 = List(tag="ol", items=["First", "Second"])
+        expected2 = List(
+            tag="ol",
+            items=[
+                [Text(text="First")],
+                [Text(text="Second")],
+            ],
+        )
         self.assertEqual(actual1, expected1)
         self.assertEqual(actual2, expected2)
 

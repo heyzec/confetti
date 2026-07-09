@@ -9,9 +9,13 @@ from confetti.blocks import (
     Table,
     TaskList,
 )
+from confetti.blocks.code import Code
+from confetti.blocks.date import Date
+from confetti.blocks.link import Link
+from confetti.blocks.styled_text import StyledText
+from confetti.blocks.text import Text
 from confetti.document import Document
-from confetti.markdown.parse import parse_markdown
-from confetti.xhtml import render_for_xhtml
+from confetti.xhtml import xml_escape
 
 from ..xhtml.table import render_table_xhtml
 
@@ -29,17 +33,45 @@ def render_code_block(block: CodeBlock) -> str:
     return "".join(parts)
 
 
-def render_heading(block: Heading) -> str:
-    return f"<h{block.level}>{render_for_xhtml(block.text)}</h{block.level}>"
+def render_inline(block: Block) -> str:
+    if isinstance(block, Text):
+        return xml_escape(block.text)
+    if isinstance(block, StyledText):
+        contents = "".join([render_inline(child) for child in block.body])
+        if block.kind == "bold":
+            return f"<strong>{contents}</strong>"
+        if block.kind == "italic":
+            return f"<em>{contents}</em>"
+        if block.kind == "strikethrough":
+            return f"<s>{contents}</s>"
+        assert False, f"Unsupported StyledText kind: {block.kind}"
+    if isinstance(block, Code):
+        return f"<code>{block.code}</code>"
+    if isinstance(block, Link):
+        contents = "".join([render_inline(child) for child in block.display_text])
+        return f'<a href="{block.url}">{contents}</a>'
+    if isinstance(block, Date):
+        return f'<time datetime="{block.format()}" />'
+
+    assert False, f"Unsupported inline block type: {type(block).__name__}"
 
 
 def render_paragraph(block: Paragraph) -> str:
-    return f"<p>{render_for_xhtml(block.text)}</p>"
+    inner = "".join(render_inline(child) for child in block.body)
+    return f"<p>{inner}</p>"
+
+
+def render_heading(block: Heading) -> str:
+    inner = "".join(render_inline(child) for child in block.body)
+    return f"<h{block.level}>{inner}</h{block.level}>"
 
 
 def render_list(block: List) -> str:
-    inner = "".join(f"<li>{render_for_xhtml(item)}</li>" for item in block.items)
-    return f"<{block.tag}>{inner}</{block.tag}>"
+    fragments = []
+    for item in block.items:
+        rendered = "".join(render_inline(child) for child in item)
+        fragments.append(f"<li>{rendered}</li>")
+    return f"<{block.tag}>" + "".join(fragments) + f"</{block.tag}>"
 
 
 def render_table(block: Table) -> str:
@@ -60,13 +92,12 @@ def render_raw_block(block: RawBlock) -> str:
 
 def render_task_list(block: TaskList) -> str:
     parts = ["<ac:task-list>"]
-    for task_id, status, body_md in block.tasks:
-        body_xhtml = render_xhtml(parse_markdown(body_md))
+    for task_item in block.tasks:
         parts.append(
             f"\n<ac:task>"
-            f"\n<ac:task-id>{task_id}</ac:task-id>"
-            f"\n<ac:task-status>{status}</ac:task-status>"
-            f"\n<ac:task-body>{body_xhtml}</ac:task-body>"
+            f"\n<ac:task-id>{task_item.task_id}</ac:task-id>"
+            f"\n<ac:task-status>{'incomplete' if task_item.done else 'incomplete'}</ac:task-status>"
+            f"\n<ac:task-body>{''.join(render_inline(b) for b in task_item.body)}</ac:task-body>"
             f"\n</ac:task>"
         )
     parts.append("\n</ac:task-list>")

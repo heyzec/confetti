@@ -6,6 +6,5 @@ from .block import Block
 
 
 @dataclass
-class List(Block):
-    tag: str  # "ul" or "ol"
-    items: list[list[Block]]  # inline markdown per item
+class Text(Block):
+    text: str

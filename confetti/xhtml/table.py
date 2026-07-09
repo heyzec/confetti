@@ -3,53 +3,14 @@ from __future__ import annotations
 import re
 import xml.etree.ElementTree as ET
 
-from confetti.blocks import Merge, Table
+from confetti.blocks import Block, Merge, Table
 
-from ..constants import RAW_OPEN
-from . import (
-    _BLOCK_CONTENT_TAGS,
-    _CELL_TAGS,
-    _serialize_element,
-    collect_inline,
-    inline_is_simple,
-    is_local,
-    is_macro,
-    normalize,
-    render_for_xhtml,
-)
-
-
-def _serialize_inner_xml(element: ET.Element) -> str:
-    xml = _serialize_element(element)
-    gt = xml.index(">")
-    if xml[gt - 1] == "/":
-        return ""
-    return xml[gt + 1 : xml.rindex("</")]
-
-
-def _cell_content(cell_el: ET.Element) -> str | None:
-    """Return the cell's markdown content string, or None if not representable simply."""
-    block_children = [
-        c
-        for c in cell_el
-        if is_local(c.tag) in _BLOCK_CONTENT_TAGS and not is_macro(c.tag)
-    ]
-    if not block_children:
-        content_el = cell_el
-    elif len(block_children) == 1 and is_local(block_children[0].tag) in ("p", "div"):
-        content_el = block_children[0]
-    else:
-        return None
-
-    if not inline_is_simple(content_el):
-        return None
-    raw_inline = collect_inline(content_el)
-    if re.search(re.escape(RAW_OPEN) + r"[^\x03]*\n", raw_inline):
-        return None
-    return normalize(raw_inline)
+from . import _CELL_TAGS, is_local, is_macro
 
 
 def xhtml_parse_table(element: ET.Element) -> Table | None:
+    from confetti.xhtml.parse import collect_inline as collect_inline_blocks
+
     """Parse a <table> element into the Table IR.
 
     Cells covered by a merge are stored as None in the 2D grid; the merges
@@ -76,7 +37,7 @@ def xhtml_parse_table(element: ET.Element) -> Table | None:
         return None
 
     num_rows = len(trs)
-    grid: dict[tuple[int, int], str | None] = {}
+    grid: dict[tuple[int, int], list[Block] | None] = {}
     occupied: set[tuple[int, int]] = set()
     merges_out: list = []
     alignments: dict[tuple[int, int], str] = {}
@@ -99,13 +60,14 @@ def xhtml_parse_table(element: ET.Element) -> Table | None:
             if m:
                 alignments[(row_idx, col_cursor)] = m.group(1)
 
-            content = _cell_content(cell)
-            if content is None:
-                # Fall back to raw inner XML for cells we can't represent simply.
-                raw = _serialize_inner_xml(cell)
-                if "\n" in raw:
-                    return None
-                content = raw
+            # content = _cell_content(cell)
+            # if content is None:
+            #     # Fall back to raw inner XML for cells we can't represent simply.
+            #     raw = _serialize_inner_xml(cell)
+            #     if "\n" in raw:
+            #         return None
+            #     content = raw
+            content = collect_inline_blocks(cell)
 
             grid[(row_idx, col_cursor)] = content
 
@@ -125,8 +87,8 @@ def xhtml_parse_table(element: ET.Element) -> Table | None:
         return None
 
     num_cols = max(c for (_, c) in grid) + 1
-    cells_2d: list[list[str | None]] = [
-        [grid.get((r, c), "") for c in range(num_cols)] for r in range(num_rows)
+    cells_2d: list[list[list[Block] | None]] = [
+        [grid.get((r, c), []) for c in range(num_cols)] for r in range(num_rows)
     ]
 
     # Extract per-column pixel widths from <colgroup><col style="width: X.Ypx;" />.
@@ -150,7 +112,9 @@ def xhtml_parse_table(element: ET.Element) -> Table | None:
     )
 
 
-def render_table_xhtml(table: "Table") -> str:
+def render_table_xhtml(table: Table) -> str:
+    from confetti.xhtml.render import render_inline
+
     if not table.cells:
         return "<table></table>"
 
@@ -194,7 +158,10 @@ def render_table_xhtml(table: "Table") -> str:
                     attrs += f' rowspan="{m.rowspan}"'
             if (r, c) in table.alignments:
                 attrs += f' style="text-align: {table.alignments[(r, c)]};"'
-            inner = render_for_xhtml(content or "") + "<br />"
+            # inner = render_for_xhtml(content or "") + "<br />"
+            inner = (
+                " ".join(render_inline(b) for b in content) if content else ""
+            ) + "<br />"
             parts.append(f"<{cell_tag}{attrs}>{inner}</{cell_tag}>")
         parts.append("</tr>")
     parts.append("</tbody>")

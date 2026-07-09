@@ -1,10 +1,10 @@
-import re
+# import re
 
 RAW_OPEN = "\x02"
 RAW_CLOSE = "\x03"
-SENTINEL_RE = re.compile(
-    re.escape(RAW_OPEN) + r"(.*?)" + re.escape(RAW_CLOSE), re.DOTALL
-)
+# SENTINEL_RE = re.compile(
+#     re.escape(RAW_OPEN) + r"(.*?)" + re.escape(RAW_CLOSE), re.DOTALL
+# )
 
 
 # == Confluence ==

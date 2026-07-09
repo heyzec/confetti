@@ -1,12 +1,13 @@
 from __future__ import annotations
 
 import json
+import re
 
 from confetti.blocks import Table
+from confetti.constants import RAW_CLOSE, RAW_OPEN
+from confetti.markdown.constants import AC_RI_OPEN, TAG_NAME
 
-from ..blocks import Merge, Table
-from ..xhtml import render_for_markdown
-from . import encode_inline_xml
+from ..blocks import Block, Merge, Table
 
 _WS = " \t\n\r\f\v"
 
@@ -23,7 +24,57 @@ def _parse_row(line: str) -> list[str]:
     return [encode_inline_xml(c.strip(_WS)) for c in line.strip().strip("|").split("|")]
 
 
+def encode_inline_xml(text: str) -> str:
+    """Wrap ac:/ri: XML fragments in text with sentinels for round-trip fidelity."""
+    result: list[str] = []
+    pos = 0
+    while pos < len(text):
+        m = AC_RI_OPEN.search(text, pos)
+        if m is None:
+            result.append(text[pos:])
+            break
+
+        result.append(text[pos : m.start()])
+        start = m.start()
+
+        tag_end = text.find(">", start)
+        if tag_end == -1:
+            result.append(text[start:])
+            break
+
+        if text[tag_end - 1] == "/":
+            result.append(f"{RAW_OPEN}{text[start:tag_end + 1]}{RAW_CLOSE}")
+            pos = tag_end + 1
+        else:
+            nm = TAG_NAME.match(text, start)
+            tag_name = nm.group(1) if nm else ""
+            open_re = re.compile(r"<" + re.escape(tag_name) + r"(?=[\s>/])")
+            close_re = re.compile(r"</" + re.escape(tag_name) + r"(?=[\s>])")
+            depth = 1
+            sp = tag_end + 1
+            while depth > 0:
+                next_open = open_re.search(text, sp)
+                next_close = close_re.search(text, sp)
+                if next_close is None:
+                    sp = len(text)
+                    break
+                if next_open and next_open.start() < next_close.start():
+                    depth += 1
+                    sp = next_open.end()
+                else:
+                    depth -= 1
+                    sp = next_close.end()
+            close_gt = text.find(">", sp - 1)
+            end = close_gt + 1 if close_gt != -1 else len(text)
+            result.append(f"{RAW_OPEN}{text[start:end]}{RAW_CLOSE}")
+            pos = end
+
+    return "".join(result)
+
+
 def parse_table(lines: list[str], i: int) -> tuple[Table, int] | None:
+    from confetti.markdown.parse import parse_inline
+
     col_widths: list[float | None] = []
     alignments: dict = {}
     line = lines[i].strip()
@@ -85,15 +136,16 @@ def parse_table(lines: list[str], i: int) -> tuple[Table, int] | None:
                             continue
                         covered.add((r + dr, c + dc))
 
-    cells: list[list[str | None]] = []
+    cells: list[list[list[Block] | None]] = []
     for r in range(nrows):
-        row: list[str | None] = []
+        row: list[list[Block] | None] = []
         for c in range(ncols):
             if (r, c) in covered:
                 row.append(None)
             else:
                 # Un-escape \< and \^ that were escaped to avoid marker collision.
-                row.append(raw_grid[r][c].replace("\\<", "<").replace("\\^", "^"))
+                escaped = raw_grid[r][c].replace("\\<", "<").replace("\\^", "^")
+                row.append(parse_inline(escaped))
         cells.append(row)
 
     return (
@@ -105,7 +157,7 @@ def parse_table(lines: list[str], i: int) -> tuple[Table, int] | None:
 # == Rendering ==
 
 
-def _symbol_at(table: "Table", row: int, col: int) -> str:
+def _symbol_at(table: Table, row: int, col: int) -> str:
     """Return '<' (colspan continuation) or '^' (rowspan continuation) for a None cell."""
     for m in table.merges:
         if not (m.row <= row < m.row + m.rowspan and m.col <= col < m.col + m.colspan):
@@ -118,29 +170,25 @@ def _symbol_at(table: "Table", row: int, col: int) -> str:
 
 
 def render_table_markdown(table: Table) -> str:
+    from confetti.markdown.render import render_inline
+
     if not table.cells:
         return ""
     ncols = max(len(row) for row in table.cells)
-
-    def esc(text: str) -> str:
-        rendered = (
-            render_for_markdown(text)
-            .replace("|", "\\|")
-            .replace("\n", " ")
-            .replace("\r", "")
-        )
-        # Escape literal < and ^ so they aren't misread as span markers on re-parse.
-        if rendered == "<":
-            return "\\<"
-        if rendered == "^":
-            return "\\^"
-        return rendered
 
     def render_cell(r: int, c: int) -> str:
         cell = table.cells[r][c] if c < len(table.cells[r]) else None
         if cell is None:
             return _symbol_at(table, r, c)
-        return esc(cell)
+
+        rendered = "".join(render_inline(b) for b in cell)
+        escaped = rendered.replace("|", "\\|").replace("\n", " ").replace("\r", "")
+        # Escape literal < and ^ so they aren't misread as span markers on re-parse.
+        if escaped == "<":
+            return "\\<"
+        if escaped == "^":
+            return "\\^"
+        return escaped
 
     # Pre-render all cells, then pad each column to its max width.
     grid = [[render_cell(r, c) for c in range(ncols)] for r in range(len(table.cells))]
