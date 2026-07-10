@@ -158,7 +158,6 @@ def render_table_xhtml(table: Table) -> str:
                     attrs += f' rowspan="{m.rowspan}"'
             if (r, c) in table.alignments:
                 attrs += f' style="text-align: {table.alignments[(r, c)]};"'
-            # inner = render_for_xhtml(content or "") + "<br />"
             inner = (
                 " ".join(render_inline(b) for b in content) if content else ""
             ) + "<br />"

@@ -194,7 +194,6 @@ def parse_paragraph(lines: list[str], i: int) -> tuple[Paragraph, int] | None:
         para_lines.append(cur_s)
         i += 1
     if para_lines:
-        # return Paragraph(text=encode_inline_xml(" ".join(para_lines))), i
         body = []
         for line in para_lines:
             temp = parse_inline(line)
