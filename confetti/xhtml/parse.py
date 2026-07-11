@@ -15,6 +15,7 @@ from confetti.blocks import (
 from confetti.blocks.code import Code
 from confetti.blocks.date import Date
 from confetti.blocks.link import Link
+from confetti.blocks.raw_inline import RawInline
 from confetti.blocks.styled_text import StyledText
 from confetti.blocks.task_list import TaskListItem
 from confetti.blocks.text import Text
@@ -268,18 +269,7 @@ def parse_inline(element: ET.Element) -> Block:
         assert dt_fmt
         return Date.parse(dt_fmt)
 
-    # Unideal handling of tags
-    if element.tag == "span":
-        # Lossy behaviour: We ignore span
-        # print(ET.tostring(element))
-        blocks = collect_inline(element)
-        assert len(blocks) == 1, "Span should contain only one block"
-        return blocks[0]
-
-    # Fallback to RawBlock, if it accepts (todo: span should be also handled there)
-    block = parse_element(element)
-    assert block is not None, f"Unsupported inline element: {element.tag}"
-    return block
+    return RawInline(xml=ET.tostring(element, encoding="unicode"))
 
 
 def parse_paragraph(element: ET.Element) -> Paragraph | None:

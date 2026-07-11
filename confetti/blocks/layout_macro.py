@@ -25,3 +25,9 @@ class LayoutMacro(Block):
     open_xml: str
     close_xml: str
     blocks: list[Block]
+
+    def __init__(self, open_xml: str, close_xml: str, blocks: list[Block]):
+        print("Initializing LayoutMacro with open_xml:", open_xml)
+        self.open_xml = open_xml
+        self.close_xml = close_xml
+        self.blocks = blocks

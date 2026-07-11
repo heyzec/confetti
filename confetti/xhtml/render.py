@@ -12,6 +12,7 @@ from confetti.blocks import (
 from confetti.blocks.code import Code
 from confetti.blocks.date import Date
 from confetti.blocks.link import Link
+from confetti.blocks.raw_inline import RawInline
 from confetti.blocks.styled_text import StyledText
 from confetti.blocks.text import Text
 from confetti.document import Document
@@ -52,6 +53,8 @@ def render_inline(block: Block) -> str:
         return f'<a href="{block.url}">{contents}</a>'
     if isinstance(block, Date):
         return f'<time datetime="{block.format()}" />'
+    if isinstance(block, RawInline):
+        return block.xml
 
     assert False, f"Unsupported inline block type: {type(block).__name__}"
 

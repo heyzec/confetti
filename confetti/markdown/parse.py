@@ -16,6 +16,7 @@ from confetti.blocks import (
 from confetti.blocks.code import Code
 from confetti.blocks.date import Date
 from confetti.blocks.link import Link
+from confetti.blocks.raw_inline import RawInline
 from confetti.blocks.styled_text import StyledText
 from confetti.blocks.task_list import TaskListItem
 from confetti.blocks.text import Text
@@ -210,17 +211,19 @@ def parse_styled_text(lines: list[str], i: int) -> tuple[Paragraph, int] | None:
 
 
 _INLINE_MD_PATTERNS = [
-    (re.compile(r"\\(.)"), "escape"),
-    (re.compile(r"\[([^\]]*)\]\(([^)]*)\)"), "link"),
-    (re.compile(r"\*\*\*(.+?)\*\*\*", re.DOTALL), "strong_em"),
-    (re.compile(r"___(.+?)___", re.DOTALL), "strong_em"),
-    (re.compile(r"\*\*(.+?)\*\*", re.DOTALL), "strong"),
-    (re.compile(r"__(.+?)__", re.DOTALL), "strong"),
-    (re.compile(r"~~(.+?)~~", re.DOTALL), "s"),
-    (re.compile(r"`([^`\n]+)`"), "code"),
-    (re.compile(r"\*([^*\n]+)\*"), "em"),
-    (re.compile(r"_([^_\n]+)_"), "em"),
-    (re.compile(r"📅\s*(\d{4}-\d{2}-\d{2})"), "date"),
+    (re.compile(r"\\(?P<inner>.)"), "escape"),
+    (re.compile(r"\[(?P<inner>[^\]]*)\]\((?P<url>[^)]*)\)"), "link"),
+    (re.compile(r"\*\*\*(?P<inner>.+?)\*\*\*", re.DOTALL), "strong_em"),
+    (re.compile(r"___(?P<inner>.+?)___", re.DOTALL), "strong_em"),
+    (re.compile(r"\*\*(?P<inner>.+?)\*\*", re.DOTALL), "strong"),
+    (re.compile(r"__(?P<inner>.+?)__", re.DOTALL), "strong"),
+    (re.compile(r"~~(?P<inner>.+?)~~", re.DOTALL), "s"),
+    (re.compile(r"`(?P<inner>[^`\n]+)`"), "code"),
+    (re.compile(r"\*(?P<inner>[^*\n]+)\*"), "em"),
+    (re.compile(r"_(?P<inner>[^_\n]+)_"), "em"),
+    (re.compile(r"📅\s*(?P<inner>\d{4}-\d{2}-\d{2})"), "date"),
+    (re.compile(r"<([^>]+)( [^>]+)?>(?P<inner>.+)</\1>"), "raw_inline"),
+    (re.compile(r"(?P<inner>)<([^>]+)( [^>]+)?/>"), "raw_inline"),
 ]
 
 
@@ -248,10 +251,10 @@ def parse_inline(text: str) -> list[Block]:
             # print("Here is the text to append as Text:", text[pos:best_start])
             result.append(Text(text=text[pos:best_start]))
 
-        inner_text = best_m.group(1)
+        inner_text = best_m.group("inner")
         if best_name == "link":
             result.append(
-                Link(url=best_m.group(2), display_text=parse_inline(inner_text))
+                Link(url=best_m.group("url"), display_text=parse_inline(inner_text))
             )
         elif best_name == "strong_em":
             # Commonmark: <em><strong>...</strong></em> is always preferred to <strong><em>...</em></strong>
@@ -272,10 +275,12 @@ def parse_inline(text: str) -> list[Block]:
         elif best_name == "em":
             result.append(StyledText(kind="italic", body=parse_inline(inner_text)))
         elif best_name == "escape":
-            result.append(Text(text=best_m.group(1)))
+            result.append(Text(text=inner_text))
         elif best_name == "date":
             dt_fmt = best_m.group(1)
             result.append(Date.parse(dt_fmt))
+        elif best_name == "raw_inline":
+            result.append(RawInline(xml=best_m.group(0)))
 
         pos = best_m.end()
 
