@@ -1,12 +1,9 @@
 #!/usr/bin/env python3
 import argparse
-import json
 import os
 import sys
-import urllib.error
-import urllib.parse
-import urllib.request
 
+from confetti.confluence import ConfluenceClient
 from confetti.convert import markdown_to_xhtml, xhtml_to_markdown
 
 try:
@@ -33,44 +30,6 @@ def _write(path: str, content: str) -> None:
         print(f"Written to {path}", file=sys.stderr)
 
 
-def _resolve_page_id(value: str, auth_headers: dict) -> str:
-    """Accept a numeric page ID or a Confluence page URL; return the numeric ID."""
-    if value.isdigit():
-        return value
-    req = urllib.request.Request(value, headers=auth_headers)
-    try:
-        with urllib.request.urlopen(req) as resp:
-            final_url = resp.url
-    except urllib.error.HTTPError as exc:
-        raise ValueError(
-            f"Could not resolve page URL: {exc.code} {exc.reason}"
-        ) from exc
-    parsed = urllib.parse.urlparse(final_url)
-    parts = parsed.path.split("/")
-    if len(parts) < 4 or parts[1] != "display":
-        raise ValueError(f"Could not extract page from resolved URL: {final_url}")
-    space_key = parts[2]
-    title = urllib.parse.unquote_plus(parts[3])
-    base_url = f"{parsed.scheme}://{parsed.netloc}"
-    api_url = (
-        f"{base_url}/rest/api/content"
-        f"?spaceKey={urllib.parse.quote(space_key)}"
-        f"&title={urllib.parse.quote(title)}"
-    )
-    api_req = urllib.request.Request(api_url, headers=auth_headers)
-    try:
-        with urllib.request.urlopen(api_req) as resp:
-            data = json.loads(resp.read().decode())
-    except urllib.error.HTTPError as exc:
-        raise ValueError(
-            f"Could not look up page by title: {exc.code} {exc.reason}"
-        ) from exc
-    results = data.get("results", [])
-    if not results:
-        raise ValueError(f"No page found for space={space_key!r} title={title!r}")
-    return results[0]["id"]
-
-
 def cmd_to_md(args: argparse.Namespace) -> None:
     xhtml = _read(args.input)
     md = xhtml_to_markdown(xhtml)
@@ -84,25 +43,7 @@ def cmd_to_xhtml(args: argparse.Namespace) -> None:
 
 
 def cmd_download(args: argparse.Namespace) -> None:
-    token = os.environ.get("CONFLUENCE_TOKEN")
-    if not token:
-        raise ValueError("CONFLUENCE_TOKEN environment variable not set")
-
-    base_url = os.environ.get("CONFLUENCE_URL", "https://confluence.shopee.io").rstrip(
-        "/"
-    )
-    auth_headers = {"Authorization": f"Bearer {token}"}
-    page_id = _resolve_page_id(args.page, auth_headers)
-
-    get_url = f"{base_url}/rest/api/content/{page_id}?expand=body.storage"
-    req = urllib.request.Request(get_url, headers=auth_headers)
-    try:
-        with urllib.request.urlopen(req) as resp:
-            page = json.loads(resp.read().decode())
-    except urllib.error.HTTPError as exc:
-        raise ValueError(f"GET page {page_id} failed: {exc.code} {exc.reason}") from exc
-
-    xhtml = page["body"]["storage"]["value"]
+    xhtml = client.read_page(args.page)
 
     if args.file.endswith(".md"):
         content = xhtml_to_markdown(xhtml)
@@ -113,56 +54,17 @@ def cmd_download(args: argparse.Namespace) -> None:
 
 
 def cmd_upload(args: argparse.Namespace) -> None:
-    token = os.environ.get("CONFLUENCE_TOKEN")
-    if not token:
-        raise ValueError("CONFLUENCE_TOKEN environment variable not set")
-
-    base_url = os.environ.get("CONFLUENCE_URL", "https://confluence.shopee.io").rstrip(
-        "/"
-    )
-    auth_headers = {
-        "Authorization": f"Bearer {token}",
-        "Content-Type": "application/json",
-    }
-    page_id = _resolve_page_id(args.page, auth_headers)
-
-    get_url = f"{base_url}/rest/api/content/{page_id}"
-    req = urllib.request.Request(get_url, headers=auth_headers)
-    try:
-        with urllib.request.urlopen(req) as resp:
-            page = json.loads(resp.read().decode())
-    except urllib.error.HTTPError as exc:
-        raise ValueError(f"GET page {page_id} failed: {exc.code} {exc.reason}") from exc
-
-    current_version = page["version"]["number"]
-    title = page["title"]
-
     raw = _read(args.file)
     if args.file.endswith(".md"):
         xhtml = markdown_to_xhtml(raw)
     else:
         xhtml = raw
 
-    put_url = f"{base_url}/rest/api/content/{page_id}?expand=body.storage"
-    body = json.dumps(
-        {
-            "version": {"number": current_version + 1},
-            "type": "page",
-            "title": title,
-            "body": {"storage": {"value": xhtml, "representation": "storage"}},
-        }
-    ).encode()
-    req = urllib.request.Request(put_url, data=body, headers=auth_headers, method="PUT")
-    try:
-        with urllib.request.urlopen(req) as resp:
-            result = json.loads(resp.read().decode())
-    except urllib.error.HTTPError as exc:
-        detail = exc.read().decode()
-        raise ValueError(
-            f"PUT page {page_id} failed: {exc.code} {exc.reason}\n{detail}"
-        ) from exc
+    page_id = client._resolve_page_id(args.page)
+    page = client.get_metadata(page_id)
+    title = page["title"]
+    new_version = client.update_page(args.page, title, xhtml)
 
-    new_version = result["version"]["number"]
     print(
         f"Updated '{title}' (page {page_id}) → version {new_version}", file=sys.stderr
     )
@@ -233,11 +135,17 @@ def build_parser() -> argparse.ArgumentParser:
 def main() -> None:
     parser = build_parser()
     args = parser.parse_args()
-    try:
-        args.func(args)
-    except (OSError, ValueError) as exc:
-        print(f"error: {exc}", file=sys.stderr)
-        sys.exit(1)
+
+    token = os.environ.get("CONFLUENCE_TOKEN")
+    if not token:
+        raise ValueError("CONFLUENCE_TOKEN environment variable not set")
+    base_url = os.environ.get("CONFLUENCE_URL", "https://confluence.shopee.io").rstrip(
+        "/"
+    )
+    global client
+    client = ConfluenceClient(base_url=base_url, token=token)
+
+    args.func(args)
 
 
 if __name__ == "__main__":
