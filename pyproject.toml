@@ -8,3 +8,10 @@ dependencies = [
     "dulwich>=1.2.10",
     "python-dotenv>=1.2.2",
 ]
+
+[build-system]
+requires = ["uv_build>=0.8.0,<0.9.0"]
+build-backend = "uv_build"
+
+[tool.uv.build-backend]
+module-root = ""
