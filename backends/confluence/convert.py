@@ -1,8 +1,8 @@
 from __future__ import annotations
 
-from confetti.markdown.render import render_markdown
-from confetti.xhtml.parse import parse_xhtml
-from confetti.xhtml.render import render_xhtml
+from .markdown.render import render_markdown
+from .xhtml.parse import parse_xhtml
+from .xhtml.render import render_xhtml
 
 from .markdown.parse import parse_markdown
 

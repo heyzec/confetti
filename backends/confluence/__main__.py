@@ -3,8 +3,8 @@ import argparse
 import os
 import sys
 
-from confetti.confluence import ConfluenceClient
-from confetti.convert import markdown_to_xhtml, xhtml_to_markdown
+from backends.confluence.client import ConfluenceClient
+from backends.confluence.convert import markdown_to_xhtml, xhtml_to_markdown
 
 try:
     import dotenv

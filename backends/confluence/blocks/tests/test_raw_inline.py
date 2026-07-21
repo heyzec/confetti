@@ -1,6 +1,6 @@
 import unittest
 
-from confetti import markdown_to_xhtml, xhtml_to_markdown
+from backends.confluence import markdown_to_xhtml, xhtml_to_markdown
 
 from ...blocks import Paragraph
 from ...blocks.raw_inline import RawInline

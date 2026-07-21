@@ -2,11 +2,11 @@
 
 import unittest
 
-from confetti import xhtml_to_markdown
-from confetti.convert import parse_markdown
-from confetti.markdown.render import render_markdown
-from confetti.xhtml.parse import parse_xhtml
-from confetti.xhtml.render import render_xhtml
+from backends.confluence import xhtml_to_markdown
+from backends.confluence.convert import parse_markdown
+from backends.confluence.markdown.render import render_markdown
+from backends.confluence.xhtml.parse import parse_xhtml
+from backends.confluence.xhtml.render import render_xhtml
 
 # ---------------------------------------------------------------------------
 # XHTML → Markdown → IR → XHTML round-trip

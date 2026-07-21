@@ -3,7 +3,7 @@
 import os
 import unittest
 
-from confetti import xhtml_to_markdown
+from backends.confluence import xhtml_to_markdown
 
 # ---------------------------------------------------------------------------
 # Macro dropping

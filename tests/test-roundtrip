@@ -9,6 +9,6 @@ BASE="$(basename "${SAMPLE%.*}")"
 MD="$DIR/$BASE.md"
 RT="$DIR/$BASE.rt.xml"
 
-python3 -m confetti to-md "$SAMPLE" -o "$MD"
-python3 -m confetti to-xhtml "$MD" -o "$RT"
+confetti to-md "$SAMPLE" -o "$MD"
+confetti to-xhtml "$MD" -o "$RT"
 diff "$SAMPLE" "$RT" && echo "OK: $SAMPLE roundtrips cleanly"
