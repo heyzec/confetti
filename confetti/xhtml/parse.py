@@ -1,7 +1,7 @@
 import re
 import xml.etree.ElementTree as ET
 
-from confetti.blocks import (
+from ..blocks import (
     Block,
     CodeBlock,
     Heading,
@@ -12,23 +12,23 @@ from confetti.blocks import (
     Table,
     TaskList,
 )
-from confetti.blocks.code import Code
-from confetti.blocks.date import Date
-from confetti.blocks.link import Link
-from confetti.blocks.raw_inline import RawInline
-from confetti.blocks.styled_text import StyledText
-from confetti.blocks.task_list import TaskListItem
-from confetti.blocks.text import Text
-from confetti.constants import AC_NS, RI_NS
-from confetti.document import Document
-from confetti.xhtml import (
+from ..blocks.code import Code
+from ..blocks.date import Date
+from ..blocks.link import Link
+from ..blocks.raw_inline import RawInline
+from ..blocks.styled_text import StyledText
+from ..blocks.task_list import TaskListItem
+from ..blocks.text import Text
+from ..constants import AC_NS, RI_NS
+from ..document import Document
+from ..xhtml import (
     et_tag_to_qname,
     is_local,
     is_macro,
     replace_html_entities,
     serialize_open_tag,
 )
-from confetti.xhtml.table import xhtml_parse_table
+from ..xhtml.table import xhtml_parse_table
 
 from ..xhtml import _HEADING_TAGS, _LIST_TAGS, inline_is_simple, is_local, is_macro
 

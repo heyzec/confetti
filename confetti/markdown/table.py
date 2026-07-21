@@ -2,8 +2,6 @@ from __future__ import annotations
 
 import json
 
-from confetti.blocks import Table
-
 from ..blocks import Block, Merge, Table
 
 _WS = " \t\n\r\f\v"
@@ -22,7 +20,7 @@ def _parse_row(line: str) -> list[str]:
 
 
 def parse_table(lines: list[str], i: int) -> tuple[Table, int] | None:
-    from confetti.markdown.parse import parse_inline
+    from ..markdown.parse import parse_inline
 
     col_widths: list[float | None] = []
     alignments: dict = {}
@@ -119,7 +117,7 @@ def _symbol_at(table: Table, row: int, col: int) -> str:
 
 
 def render_table_markdown(table: Table) -> str:
-    from confetti.markdown.render import render_inline
+    from ..markdown.render import render_inline
 
     if not table.cells:
         return ""

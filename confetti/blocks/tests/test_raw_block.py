@@ -1,7 +1,7 @@
 import unittest
 
-from confetti.blocks import RawBlock
-from confetti.convert import markdown_to_xhtml, parse_xhtml, xhtml_to_markdown
+from ...blocks import RawBlock
+from ...convert import markdown_to_xhtml, parse_xhtml, xhtml_to_markdown
 
 
 class TestRawBlockXHTML(unittest.TestCase):

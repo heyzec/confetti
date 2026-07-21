@@ -1,9 +1,9 @@
 import unittest
 
-from confetti.blocks import TaskList
-from confetti.blocks.task_list import TaskListItem
-from confetti.blocks.text import Text
-from confetti.convert import (
+from ...blocks import TaskList
+from ...blocks.task_list import TaskListItem
+from ...blocks.text import Text
+from ...convert import (
     markdown_to_xhtml,
     parse_markdown,
     parse_xhtml,

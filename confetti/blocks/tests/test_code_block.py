@@ -1,14 +1,14 @@
 import unittest
 
-from confetti.blocks import CodeBlock
-from confetti.convert import (
+from ...blocks import CodeBlock
+from ...convert import (
     markdown_to_xhtml,
     parse_markdown,
     parse_xhtml,
     render_xhtml,
     xhtml_to_markdown,
 )
-from confetti.markdown.render import render_markdown
+from ...markdown.render import render_markdown
 
 
 class TestCodeBlockMarkdown(unittest.TestCase):

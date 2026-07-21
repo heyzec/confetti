@@ -1,15 +1,10 @@
 import unittest
 
-from confetti.blocks import Heading
-from confetti.blocks.text import Text
-from confetti.convert import (
-    parse_markdown,
-    parse_xhtml,
-    render_xhtml,
-    xhtml_to_markdown,
-)
-from confetti.markdown.render import render_heading as md_render_heading
-from confetti.xhtml.render import render_heading as xhtml_render_heading
+from ...blocks import Heading
+from ...blocks.text import Text
+from ...convert import parse_markdown, parse_xhtml, render_xhtml, xhtml_to_markdown
+from ...markdown.render import render_heading as md_render_heading
+from ...xhtml.render import render_heading as xhtml_render_heading
 
 
 class TestHeadingMarkdown(unittest.TestCase):

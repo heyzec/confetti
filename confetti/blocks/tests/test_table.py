@@ -2,15 +2,15 @@ from __future__ import annotations
 
 import unittest
 
-from confetti.blocks import Merge, Table, Text
-from confetti.convert import (
+from ...blocks import Merge, Table, Text
+from ...convert import (
     markdown_to_xhtml,
     parse_markdown,
     parse_xhtml,
     render_xhtml,
     xhtml_to_markdown,
 )
-from confetti.document import Document
+from ...document import Document
 
 
 def _unpad(md: str) -> str:

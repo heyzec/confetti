@@ -1,6 +1,6 @@
 import json
 
-from confetti.blocks import (
+from ..blocks import (
     Block,
     CodeBlock,
     Heading,
@@ -11,15 +11,14 @@ from confetti.blocks import (
     Table,
     TaskList,
 )
-from confetti.blocks.code import Code
-from confetti.blocks.date import Date
-from confetti.blocks.link import Link
-from confetti.blocks.raw_inline import RawInline
-from confetti.blocks.styled_text import StyledText
-from confetti.blocks.text import Text
-from confetti.document import Document
-from confetti.markdown import escape_md_text
-
+from ..blocks.code import Code
+from ..blocks.date import Date
+from ..blocks.link import Link
+from ..blocks.raw_inline import RawInline
+from ..blocks.styled_text import StyledText
+from ..blocks.text import Text
+from ..document import Document
+from ..markdown import escape_md_text
 from ..markdown.table import render_table_markdown
 
 

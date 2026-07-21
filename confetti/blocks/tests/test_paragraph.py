@@ -1,14 +1,9 @@
 import unittest
 
-from confetti.blocks import Link, Paragraph, StyledText, Text
-from confetti.convert import (
-    markdown_to_xhtml,
-    parse_markdown,
-    parse_xhtml,
-    xhtml_to_markdown,
-)
-from confetti.document import Document
-from confetti.xhtml.render import render_xhtml
+from ...blocks import Link, Paragraph, StyledText, Text
+from ...convert import markdown_to_xhtml, parse_markdown, parse_xhtml, xhtml_to_markdown
+from ...document import Document
+from ...xhtml.render import render_xhtml
 
 
 class TestParagraphMarkdown(unittest.TestCase):

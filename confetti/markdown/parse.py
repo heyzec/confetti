@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 import re
 
-from confetti.blocks import (
+from ..blocks import (
     Block,
     CodeBlock,
     Heading,
@@ -13,15 +13,14 @@ from confetti.blocks import (
     RawBlock,
     TaskList,
 )
-from confetti.blocks.code import Code
-from confetti.blocks.date import Date
-from confetti.blocks.link import Link
-from confetti.blocks.raw_inline import RawInline
-from confetti.blocks.styled_text import StyledText
-from confetti.blocks.task_list import TaskListItem
-from confetti.blocks.text import Text
-from confetti.document import Document
-
+from ..blocks.code import Code
+from ..blocks.date import Date
+from ..blocks.link import Link
+from ..blocks.raw_inline import RawInline
+from ..blocks.styled_text import StyledText
+from ..blocks.task_list import TaskListItem
+from ..blocks.text import Text
+from ..document import Document
 from .constants import ATX_HEADING, SETEXT_DASH, SETEXT_EQ
 from .table import parse_table
 

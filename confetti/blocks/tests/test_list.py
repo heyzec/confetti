@@ -1,13 +1,8 @@
 import unittest
 
-from confetti.blocks import List, Paragraph, RawBlock
-from confetti.blocks.text import Text
-from confetti.convert import (
-    markdown_to_xhtml,
-    parse_markdown,
-    parse_xhtml,
-    xhtml_to_markdown,
-)
+from ...blocks import List, Paragraph, RawBlock
+from ...blocks.text import Text
+from ...convert import markdown_to_xhtml, parse_markdown, parse_xhtml, xhtml_to_markdown
 
 
 class TestListMarkdown(unittest.TestCase):

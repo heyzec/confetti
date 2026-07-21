@@ -1,8 +1,8 @@
 import unittest
 
-from confetti.blocks import Paragraph
-from confetti.blocks.code import Code
-from confetti.markdown.parse import parse_markdown
+from ...blocks import Paragraph
+from ...blocks.code import Code
+from ...markdown.parse import parse_markdown
 
 
 class TestCodeBlockMarkdown(unittest.TestCase):

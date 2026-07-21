@@ -3,13 +3,13 @@ from __future__ import annotations
 import re
 import xml.etree.ElementTree as ET
 
-from confetti.blocks import Block, Merge, Table
+from ..blocks import Block, Merge, Table
 
 from . import _CELL_TAGS, is_local, is_macro
 
 
 def xhtml_parse_table(element: ET.Element) -> Table | None:
-    from confetti.xhtml.parse import collect_inline as collect_inline_blocks
+    from ..xhtml.parse import collect_inline as collect_inline_blocks
 
     """Parse a <table> element into the Table IR.
 
@@ -113,7 +113,7 @@ def xhtml_parse_table(element: ET.Element) -> Table | None:
 
 
 def render_table_xhtml(table: Table) -> str:
-    from confetti.xhtml.render import render_inline
+    from ..xhtml.render import render_inline
 
     if not table.cells:
         return "<table></table>"

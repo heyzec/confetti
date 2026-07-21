@@ -1,9 +1,10 @@
 import unittest
 
 from confetti import markdown_to_xhtml, xhtml_to_markdown
-from confetti.blocks import Paragraph
-from confetti.blocks.raw_inline import RawInline
-from confetti.markdown.parse import parse_markdown
+
+from ...blocks import Paragraph
+from ...blocks.raw_inline import RawInline
+from ...markdown.parse import parse_markdown
 
 
 class TestRawInlineMarkdown(unittest.TestCase):
