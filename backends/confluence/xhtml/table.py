@@ -159,7 +159,7 @@ def render_table_xhtml(table: Table) -> str:
             if (r, c) in table.alignments:
                 attrs += f' style="text-align: {table.alignments[(r, c)]};"'
             inner = (
-                " ".join(render_inline(b) for b in content) if content else ""
+                "".join(render_inline(b) for b in content) if content else ""
             ) + "<br />"
             parts.append(f"<{cell_tag}{attrs}>{inner}</{cell_tag}>")
         parts.append("</tr>")
