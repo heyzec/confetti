@@ -2,10 +2,27 @@ import json
 import urllib.error
 import urllib.parse
 import urllib.request
+from dataclasses import dataclass
 
 METADATA_URL = "{base_url}/rest/api/content/{page_id}"
 CONTENT_URL = "{base_url}/rest/api/content/{page_id}?expand=body.storage"
 TITLE_URL = "{base_url}/rest/api/content" "?spaceKey={space_key}" "&title={title}"
+VERSIONS_URL = "{base_url}/rest/experimental/content/{page_id}/version"
+CONTENT_HISTORIAL_URL = "{base_url}/rest/api/content/{page_id}?status=historical&version={version}&expand=body.storage"
+
+
+@dataclass
+class Page:
+    pass
+
+
+@dataclass
+class PageVersion:
+    page: Page
+    by_username: str
+    when: str
+    message: str
+    number: int
 
 
 class ConfluenceClient:
@@ -53,17 +70,33 @@ class ConfluenceClient:
         except ValueError as exc:
             raise ValueError(f"GET page {page_id} failed: {exc}") from exc
 
-    def get_content(self, page_id: int):
+    def get_content(self, page_id: int, version: int | None = None):
+        if version is None:
+            url = CONTENT_URL.format(base_url=self.base_url, page_id=page_id)
+        else:
+            url = CONTENT_HISTORIAL_URL.format(
+                base_url=self.base_url, page_id=page_id, version=version
+            )
+
         try:
-            get_url = CONTENT_URL.format(base_url=self.base_url, page_id=page_id)
-            return self._get(get_url)
+            return self._get(url)
         except ValueError as exc:
             raise ValueError(f"GET page {page_id} failed: {exc}") from exc
 
-    def put_content(self, page_id: int, version: int, title: str, xhtml: str):
+    def put_content(
+        self,
+        page_id: int,
+        version: int,
+        title: str,
+        xhtml: str,
+        message: str | None = None,
+    ):
         url = CONTENT_URL.format(base_url=self.base_url, page_id=page_id)
         data = {
-            "version": {"number": version},
+            "version": {
+                "number": version,
+                "message": message or "",
+            },
             "type": "page",
             "title": title,
             "body": {"storage": {"value": xhtml, "representation": "storage"}},
@@ -72,6 +105,28 @@ class ConfluenceClient:
             return self._put(url, data)
         except ValueError as exc:
             raise ValueError(f"GET page {page_id} failed: {exc}") from exc
+
+    def list_versions(self, page_id: int):
+        url = VERSIONS_URL.format(base_url=self.base_url, page_id=page_id)
+        data = self._get(url)
+        if data["size"] > 200:
+            assert False, "Too many versions, we haven't support this case yet"
+
+        output: list[PageVersion] = []
+
+        page = Page()
+
+        for version_data in data["results"]:
+            output.append(
+                PageVersion(
+                    page,
+                    by_username=version_data["by"]["username"],
+                    when=version_data["when"],
+                    message=version_data["message"],
+                    number=version_data["number"],
+                )
+            )
+        return output
 
     def search_by_title(self, space_key: str, title: str):
         url = TITLE_URL.format(
@@ -114,16 +169,16 @@ class ConfluenceClient:
             raise ValueError(f"No page found for space={space_key!r} title={title!r}")
         return results[0]["id"]
 
-    def read_page(self, page: str):
+    def read_page(self, page: str, version: int | None = None):
         page_id = self._resolve_page_id(page)
         try:
-            resp = self.get_content(page_id)
+            resp = self.get_content(page_id, version)
         except ValueError as exc:
             raise ValueError(f"GET page {page_id} failed: {exc}") from exc
         xhtml = resp["body"]["storage"]["value"]
         return xhtml
 
-    def update_page(self, page: str, title, xhtml_content):
+    def update_page(self, page: str, title, xhtml_content, message: str | None = None):
         page_id = self._resolve_page_id(page)
         try:
             data = self.get_metadata(page_id)
@@ -132,7 +187,9 @@ class ConfluenceClient:
         current_version = data["version"]["number"]
         title = data["title"]
 
-        result = self.put_content(page_id, current_version + 1, title, xhtml_content)
+        result = self.put_content(
+            page_id, current_version + 1, title, xhtml_content, message=message
+        )
         new_version = result["version"]["number"]
         return new_version
 
