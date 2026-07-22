@@ -286,7 +286,7 @@ class Base[T: BaseConfig, U: BaseRevision](abc.ABC):
 
                 # Otherwise, they are actually same commit, add note
                 Notes(repo.object_store, repo.refs).set_note(
-                    commit_gen.id, f"{pr_meta.id}".encode()
+                    commit_gen.id, f"{pr_meta.id()}".encode()
                 )
                 parent = commit_gen.id
                 n_ahead -= 1
