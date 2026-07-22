@@ -269,7 +269,11 @@ def parse_inline(element: ET.Element) -> Block:
         assert dt_fmt
         return Date.parse(dt_fmt)
 
-    return RawInline(xml=ET.tostring(element, encoding="unicode"))
+    saved_tail = element.tail
+    element.tail = None
+    xml = ET.tostring(element, encoding="unicode")
+    element.tail = saved_tail
+    return RawInline(xml=xml)
 
 
 def parse_paragraph(element: ET.Element) -> Paragraph | None:
