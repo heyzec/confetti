@@ -231,6 +231,8 @@ class Base[T: BaseConfig, U: BaseRevision](abc.ABC):
             )  # try not to pollute local repo
 
             if n_ahead == 0:
+                if not isinstance(pr_meta.id(), str) or 'bound method' in repr(pr_meta.id()):
+                    assert False
                 Notes(repo.object_store, repo.refs).set_note(
                     commit_gen.id, f"{pr_meta.id()}".encode()
                 )
@@ -285,6 +287,8 @@ class Base[T: BaseConfig, U: BaseRevision](abc.ABC):
                     raise Exception(message)
 
                 # Otherwise, they are actually same commit, add note
+                if not isinstance(pr_meta.id(), str) or 'bound method' in repr(pr_meta.id()):
+                    assert False
                 Notes(repo.object_store, repo.refs).set_note(
                     commit_gen.id, f"{pr_meta.id()}".encode()
                 )
