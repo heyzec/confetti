@@ -346,33 +346,21 @@ class Base[T: BaseConfig, U: BaseRevision](abc.ABC):
     def handle_fetch(self, local: Repo, remote: MemoryRepo, shas: list[str]):
         visited = set()  # git store is large, caching can save seconds
 
-        def recurse(sha: bytes, depth=0):
-            if sha in visited:
-                # log(str(depth), depth * " ", sha.decode(), "already visited")
-                return
-            visited.add(sha)
-            if isinstance(sha, str):
-                raise TypeError("sha must be bytes")
-
-            depth += 1
-
-            obj = remote.get_object(sha)
-            local.object_store.add_object(obj)
-            if isinstance(obj, Commit):
-                commit = obj
-                # log(str(depth), depth * " ", obj.id.decode(), "new visit: Commit")
-                recurse(commit.tree, depth)
-                for parent in obj.parents:
-                    recurse(parent, depth)
-            elif isinstance(obj, Tree):
-                # log(str(depth), depth * " ", obj.id.decode(), "new visit: Tree")
-                tree = obj
-                for name, mode, sha in tree.items():
-                    child = remote.get_object(sha)
-                    recurse(child.id, depth)
-
         def handle_one(sha: str):
-            recurse(sha.encode())
+            stack = [sha.encode()]
+            while stack:
+                cur = stack.pop()
+                if cur in visited:
+                    continue
+                visited.add(cur)
+                obj = remote.get_object(cur)
+                local.object_store.add_object(obj)
+                if isinstance(obj, Commit):
+                    stack.append(obj.tree)
+                    stack.extend(obj.parents)
+                elif isinstance(obj, Tree):
+                    for _name, _mode, child_sha in obj.items():
+                        stack.append(remote.get_object(child_sha).id)
 
         for sha in shas:
             handle_one(sha)
