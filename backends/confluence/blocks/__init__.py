@@ -1,6 +1,7 @@
 from .block import Block
 from .code_block import CodeBlock
 from .date import Date
+from .expand import ExpandBlock
 from .heading import Heading
 from .layout_macro import LayoutMacro
 from .link import Link
@@ -16,6 +17,7 @@ __all__ = [
     "Block",
     "CodeBlock",
     "Date",
+    "ExpandBlock",
     "Heading",
     "LayoutMacro",
     "Link",

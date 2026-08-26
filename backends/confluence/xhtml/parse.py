@@ -4,6 +4,7 @@ import xml.etree.ElementTree as ET
 from ..blocks import (
     Block,
     CodeBlock,
+    ExpandBlock,
     Heading,
     LayoutMacro,
     List,
@@ -145,6 +146,23 @@ def parse_layout_macro(element: ET.Element) -> LayoutMacro | None:
         else:
             inner_blocks.extend(_blocks_from_elements([child]))
     return LayoutMacro(open_xml=open_xml, close_xml=close_xml, blocks=inner_blocks)
+
+
+def parse_expand(element: ET.Element) -> ExpandBlock | None:
+    if not is_macro(element.tag) or is_local(element.tag) != "structured-macro":
+        return None
+    if element.get(f"{{{AC_NS}}}name", "") != "expand":
+        return None
+    macro_id = element.get(f"{{{AC_NS}}}macro-id", "")
+    title = ""
+    inner_blocks: list[Block] = []
+    for child in element:
+        local = is_local(child.tag)
+        if local == "parameter" and child.get(f"{{{AC_NS}}}name", "") == "title":
+            title = child.text or ""
+        elif local == "rich-text-body":
+            inner_blocks.extend(_blocks_from_elements(list(child)))
+    return ExpandBlock(macro_id=macro_id, title=title, blocks=inner_blocks)
 
 
 def parse_code_block(element: ET.Element) -> CodeBlock | None:
@@ -335,6 +353,7 @@ def parse_raw_block(element: ET.Element) -> RawBlock | None:
 def parse_element(element: ET.Element) -> Block | None:
     parsers = [
         parse_layout_macro,
+        parse_expand,
         parse_code_block,
         parse_task_list,
         parse_heading,

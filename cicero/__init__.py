@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import abc
 import argparse
+import difflib
 import logging
 import os
 import sys
@@ -275,8 +276,13 @@ class Base[T: BaseConfig, U: BaseRevision](abc.ABC):
                             if name1 != name2 or mode1 != mode2 or sha1 != sha2:
                                 c1 = repo.get_object(sha1).data.decode()
                                 c2 = repo.get_object(sha2).data.decode()
-                                self.log(f"C1>>>\n{c1}\n<<<C1")
-                                self.log(f"C2>>>\n{c2}\n<<<C2")
+                                diff = difflib.unified_diff(
+                                    c1.splitlines(keepends=True),
+                                    c2.splitlines(keepends=True),
+                                    fromfile=f"{name1.decode()} (local)",
+                                    tofile=f"{name2.decode()} (generated)",
+                                )
+                                self.log("".join(diff))
 
                                 hints.append(
                                     f"mismatch in tree entry: {name1} {mode1} {sha1.decode()} (local) vs {name2} {mode2} {sha2.decode()} (generated)"

@@ -3,6 +3,7 @@ import json
 from ..blocks import (
     Block,
     CodeBlock,
+    ExpandBlock,
     Heading,
     LayoutMacro,
     List,
@@ -88,6 +89,14 @@ def render_table(block: Table) -> str:
     return render_table_markdown(block)
 
 
+def render_expand(block: ExpandBlock) -> str:
+    attrs = f' data-macro-id="{block.macro_id}"' if block.macro_id else ""
+    open_tag = f"<details{attrs}>"
+    summary = f"<summary>{block.title}</summary>\n" if block.title else ""
+    inner = "\n\n".join(render_markdown_for_block(b) for b in block.blocks)
+    return f"{open_tag}\n{summary}\n{inner}\n\n</details>"
+
+
 def render_layout_macro(block: LayoutMacro) -> str:
     inner = "\n\n".join(render_markdown_for_block(b) for b in block.blocks)
     return (
@@ -113,6 +122,7 @@ def render_task_list(block: TaskList) -> str:
 def render_markdown_for_block(block: Block) -> str:
     dispatchers = {
         CodeBlock: render_code_block,
+        ExpandBlock: render_expand,
         Heading: render_heading,
         Paragraph: render_paragraph,
         List: render_list,

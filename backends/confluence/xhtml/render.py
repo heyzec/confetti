@@ -1,6 +1,7 @@
 from ..blocks import (
     Block,
     CodeBlock,
+    ExpandBlock,
     Heading,
     LayoutMacro,
     List,
@@ -81,6 +82,20 @@ def render_table(block: Table) -> str:
     return render_table_xhtml(block)
 
 
+def render_expand(block: ExpandBlock) -> str:
+    parts = [
+        f'<ac:structured-macro ac:name="expand" ac:schema-version="1"'
+        f' ac:macro-id="{xml_escape(block.macro_id)}">'
+    ]
+    if block.title:
+        parts.append(f'<ac:parameter ac:name="title">{xml_escape(block.title)}</ac:parameter>')
+    parts.append("<ac:rich-text-body>")
+    for b in block.blocks:
+        parts.append(render_xhtml_for_block(b))
+    parts.append("</ac:rich-text-body></ac:structured-macro>")
+    return "".join(parts)
+
+
 def render_layout_macro(block: LayoutMacro) -> str:
     return (
         block.open_xml
@@ -110,6 +125,7 @@ def render_task_list(block: TaskList) -> str:
 def render_xhtml_for_block(block: Block) -> str:
     dispatchers = {
         CodeBlock: render_code_block,
+        ExpandBlock: render_expand,
         Heading: render_heading,
         Paragraph: render_paragraph,
         List: render_list,

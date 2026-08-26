@@ -108,3 +108,67 @@ class TestRoundTrip(unittest.TestCase):
         self.assertIn("* Without", xhtml)
         self.assertNotIn("<ul>", xhtml)
         self.assertNotIn("<li>", xhtml)
+
+    def test_expand_macro_roundtrip(self):
+        xhtml = (
+            '<ac:structured-macro ac:name="expand" ac:schema-version="1" ac:macro-id="abc-123">'
+            '<ac:parameter ac:name="title">Show more</ac:parameter>'
+            "<ac:rich-text-body><p>Hidden content</p></ac:rich-text-body>"
+            "</ac:structured-macro>"
+        )
+        result = self._roundtrip(xhtml)
+        self.assertIn('ac:name="expand"', result)
+        self.assertIn('ac:macro-id="abc-123"', result)
+        self.assertIn("Hidden content", result)
+        self.assertIn("Show more", result)
+
+    def test_expand_macro_xhtml_to_md(self):
+        xhtml = (
+            '<ac:structured-macro ac:name="expand" ac:schema-version="1" ac:macro-id="xyz-456">'
+            '<ac:parameter ac:name="title">Click me</ac:parameter>'
+            "<ac:rich-text-body><p>Inner paragraph</p></ac:rich-text-body>"
+            "</ac:structured-macro>"
+        )
+        md = xhtml_to_markdown(xhtml)
+        self.assertIn('<details data-macro-id="xyz-456">', md)
+        self.assertIn("<summary>Click me</summary>", md)
+        self.assertIn("Inner paragraph", md)
+        self.assertIn("</details>", md)
+
+    def test_expand_macro_no_title(self):
+        xhtml = (
+            '<ac:structured-macro ac:name="expand" ac:schema-version="1" ac:macro-id="no-title">'
+            "<ac:rich-text-body><p>Content only</p></ac:rich-text-body>"
+            "</ac:structured-macro>"
+        )
+        md = xhtml_to_markdown(xhtml)
+        self.assertIn('<details data-macro-id="no-title">', md)
+        self.assertNotIn("<summary>", md)
+        self.assertIn("Content only", md)
+
+    def test_expand_macro_md_to_xhtml(self):
+        md = '<details data-macro-id="abc-123">\n<summary>Show more</summary>\n\nHidden content\n\n</details>'
+        xhtml = render_xhtml(parse_markdown(md))
+        self.assertIn('ac:name="expand"', xhtml)
+        self.assertIn('ac:macro-id="abc-123"', xhtml)
+        self.assertIn("Show more", xhtml)
+        self.assertIn("Hidden content", xhtml)
+
+    def test_expand_macro_with_surrounding_blocks(self):
+        xhtml = (
+            "<p>Before</p>"
+            '<ac:structured-macro ac:name="expand" ac:schema-version="1" ac:macro-id="mid">'
+            "<ac:rich-text-body><p>Inside</p></ac:rich-text-body>"
+            "</ac:structured-macro>"
+            "<p>After</p>"
+        )
+        md = xhtml_to_markdown(xhtml)
+        self.assertIn("Before", md)
+        self.assertIn("<details", md)
+        self.assertIn("Inside", md)
+        self.assertIn("</details>", md)
+        self.assertIn("After", md)
+        result = self._roundtrip(xhtml)
+        self.assertIn("Before", result)
+        self.assertIn("After", result)
+        self.assertIn("Inside", result)

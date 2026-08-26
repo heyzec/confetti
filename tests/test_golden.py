@@ -26,8 +26,7 @@ class TestMacroDropping(unittest.TestCase):
         self.assertIn("```python", result)
         self.assertIn('print("hello")', result)
 
-    def test_expand_macro_preserved_as_comment(self):
-        # ac:structured-macro (expand) is preserved as an HTML comment for round-trip fidelity
+    def test_expand_macro_converted_to_details(self):
         xhtml = """
         <p>Visible</p>
         <ac:structured-macro ac:name="expand">
@@ -37,8 +36,10 @@ class TestMacroDropping(unittest.TestCase):
         """
         result = xhtml_to_markdown(xhtml)
         self.assertIn("Visible", result)
-        self.assertIn("<!-- confetti:raw", result)
-        self.assertIn("ac:structured-macro", result)
+        self.assertIn("<details", result)
+        self.assertIn("<summary>Hidden title</summary>", result)
+        self.assertIn("Expand body", result)
+        self.assertIn("</details>", result)
 
     def test_ri_user_preserved_inline(self):
         # ac:link with ri:user is preserved as raw inline XML for round-trip fidelity

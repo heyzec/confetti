@@ -6,6 +6,7 @@ import re
 from ..blocks import (
     Block,
     CodeBlock,
+    ExpandBlock,
     Heading,
     LayoutMacro,
     List,
@@ -136,6 +137,31 @@ def parse_raw_block(lines: list[str], i: int) -> tuple[RawBlock, int] | None:
     return RawBlock(xml="\n".join(xml_lines)), i
 
 
+_DETAILS_OPEN = re.compile(r'^<details(?:\s+data-macro-id="([^"]*)")?>')
+_SUMMARY = re.compile(r"^<summary>(.*)</summary>$")
+
+
+def parse_expand(lines: list[str], i: int) -> tuple[ExpandBlock, int] | None:
+    m = _DETAILS_OPEN.match(lines[i].strip())
+    if not m:
+        return None
+    macro_id = m.group(1) or ""
+    i += 1
+    title = ""
+    if i < len(lines):
+        sm = _SUMMARY.match(lines[i].strip())
+        if sm:
+            title = sm.group(1)
+            i += 1
+    inner_lines: list[str] = []
+    while i < len(lines) and lines[i].strip() != "</details>":
+        inner_lines.append(lines[i])
+        i += 1
+    i += 1  # skip '</details>'
+    inner_blocks = md_blocks_from_lines(inner_lines)
+    return ExpandBlock(macro_id=macro_id, title=title, blocks=inner_blocks), i
+
+
 def parse_list(lines: list[str], i: int) -> tuple[List, int] | None:
     ul_m = _UL_ITEM.match(lines[i])
     ol_m = _OL_ITEM.match(lines[i])
@@ -183,6 +209,8 @@ def parse_paragraph(lines: list[str], i: int) -> tuple[Paragraph, int] | None:
             "<!-- confetti:layout-open",
             "<!-- confetti:layout-close",
         ):
+            break
+        if cur_s.startswith("<details") or cur_s == "</details>":
             break
         if (
             cur_s.startswith("```")
@@ -290,6 +318,7 @@ def parse_inline(text: str) -> list[Block]:
 def md_blocks_from_lines(lines: list[str]) -> list:
     parsers = [
         parse_layout_macro,
+        parse_expand,
         parse_code_block,
         parse_task_list,
         parse_raw_block,
